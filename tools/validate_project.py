@@ -10,6 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'humanoid/scripts'))
 from competition import action_frames
 from competition_core.mission import validate_route
+sys.path.insert(0, str(ROOT / 'turtlebot/follow3/rgbd_following/src'))
+from rgbd_following_core.settings import validate as validate_rgbd
 
 
 def main():
@@ -26,6 +28,7 @@ def main():
         yaml.safe_load(path.read_text(encoding='utf-8'))
     config = yaml.safe_load((ROOT / 'humanoid/config/competition.yaml').read_text(encoding='utf-8'))
     validate_route(config)
+    validate_rgbd(yaml.safe_load((ROOT / 'turtlebot/follow3/rgbd_following/config/follow.yaml').read_text(encoding='utf-8')))
     for path in (ROOT / 'humanoid/ActionGroup').rglob('*.d6a'):
         action_frames(path)
     print('Validated %d Python files, launch/package XML, YAML, route and d6a structure.' % count)

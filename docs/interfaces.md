@@ -1,5 +1,7 @@
 # 多机接口约定
 
+方式三当前有独立实现，见 [follow3](../turtlebot/follow3/README.md)。它使用本车 `odom` 中的实时 RGB-D 目标和滚动 costmap，不需要 AMCL 或共享 `map` 原点；下文共同地图要求适用于方式二和共享前车地图位姿的方式四。方式三复用 `/competition/mission` 和 `/competition/estop`，其专用门控为 `rgbd_velocity_gate.py`，不要同时启动两个门控竞争底盘输入。具体单车/多机命名参数以方式三 `follow.launch` 为准。
+
 ## 网络与版本
 
 全队使用一个 ROS master。假设 ROS 主机为 192.168.1.100、Pi 为 192.168.1.101，实际 IP 以现场为准。每台运行 ROS 节点的电脑设置：

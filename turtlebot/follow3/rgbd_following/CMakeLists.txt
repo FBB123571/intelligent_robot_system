@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 2.8.3)
+project(rgbd_following)
+find_package(catkin REQUIRED COMPONENTS rospy sensor_msgs std_msgs cv_bridge message_filters geometry_msgs nav_msgs tf2_ros actionlib move_base_msgs)
+catkin_python_setup()
+catkin_package()
+catkin_install_python(PROGRAMS scripts/rgbd_probe.py scripts/synthetic_rgbd.py scripts/rgbd_target.py scripts/rgbd_follower.py scripts/rgbd_velocity_gate.py DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+install(DIRECTORY launch config DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})

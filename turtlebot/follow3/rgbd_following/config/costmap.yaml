@@ -1,0 +1,38 @@
+robot_radius: 0.26
+footprint_padding: 0.05
+transform_tolerance: 0.3
+track_unknown_space: true
+always_send_full_costmap: true
+plugins:
+  - {name: obstacles, type: 'costmap_2d::ObstacleLayer'}
+  - {name: inflation, type: 'costmap_2d::InflationLayer'}
+obstacles:
+  track_unknown_space: true
+  observation_sources: depth floor
+  # Body-height returns mark obstacles. Ground returns provide additional clearing
+  # rays. Both use the timestamped cloud and real camera extrinsics in TF.
+  depth:
+    topic: obstacle_cloud
+    data_type: PointCloud2
+    marking: true
+    clearing: true
+    min_obstacle_height: 0.04
+    max_obstacle_height: 1.5
+    obstacle_range: 3.5
+    raytrace_range: 4.0
+    observation_persistence: 0.0
+    expected_update_rate: 0.4
+  floor:
+    topic: obstacle_cloud
+    data_type: PointCloud2
+    marking: false
+    clearing: true
+    min_obstacle_height: -0.03
+    max_obstacle_height: 0.03
+    obstacle_range: 3.5
+    raytrace_range: 4.0
+    observation_persistence: 0.0
+    expected_update_rate: 0.4
+inflation:
+  inflation_radius: 0.55
+  cost_scaling_factor: 4.0
