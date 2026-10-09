@@ -1,0 +1,48 @@
+# Example only. Calibrate with the actual object, camera tilt and field.
+hardware_calibrated: false
+action_dir: /home/pi/TonyPi/ActionGroups
+camera: auto
+camera_timeout: 2.0
+search_timeout: 60.0
+approach_action_limit: 80
+head: {pan: 1500, tilt: 1500, pan_id: 2, tilt_id: 1}
+vision:
+  # OpenCV LAB, not HSV. Replace with measured thresholds from the Pi.
+  lower_lab: [20, 35, 135]
+  upper_lab: [240, 120, 240]
+  min_area: 0.003
+  max_area: 0.50
+  center_x: 0.50
+  x_tolerance: 0.06
+  grab_bottom: 0.88
+  grab_area: 0.025
+  stable_frames: 6
+  stability_tolerance: 0.06
+actions:
+  approach: go_forward_one_small_step
+  align_left: left_move
+  align_right: right_move
+  grab: grab
+  forward: grab_go_forward
+  left: grab_turn_left
+  right: grab_turn_right
+  release: grab_release
+hold_arm_servos: [6, 7, 8, 14, 15, 16]
+# cycles are action repetitions, NOT meters/degrees. Measure before use.
+route:
+  - {kind: forward, cycles: 6}
+  - {kind: left, cycles: 3}
+  - {kind: forward, cycles: 6}
+  - {kind: right, cycles: 3}
+  - {kind: forward, cycles: 6}
+  - {kind: wait, seconds: 1.0}
+settle_seconds: 0.8
+heartbeat:
+  enabled: false
+  host: 192.168.1.100
+  port: 15000
+  session: team1
+# Optional external grasp/drop sensor adapter writes "held" or "dropped".
+# A nonempty path makes missing/stale/non-held sensor data stop the route.
+hold_sensor_file: ''
+hold_sensor_timeout: 1.0

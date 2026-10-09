@@ -1,0 +1,6 @@
+<launch>
+  <node name="show_trajectory" pkg="show_trajectory" type="show_trajectory" />
+
+  <!-- 在rviz中显示-->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find show_trajectory)/config/show_trajectory.rviz" required="true" />
+</launch>

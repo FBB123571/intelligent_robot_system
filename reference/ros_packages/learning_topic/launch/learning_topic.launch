@@ -1,0 +1,13 @@
+<launch>
+
+  <include file="$(find turtlebot_gazebo)/launch/turtlebot_world.launch">
+    <arg name="world_file" value="/home/haiden/worlds/empty.world" />
+  </include>
+
+  <node name="velocity_publisher" pkg="learning_topic" type="velocity_publisher" output="screen" />
+    
+  <node name="odom_subscriber" pkg="learning_topic" type="odom_subscriber" output="screen" />
+
+</launch>
+
+
