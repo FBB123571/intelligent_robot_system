@@ -24,4 +24,5 @@
   <exec_depend>python-numpy</exec_depend>
   <exec_depend>rosbag</exec_depend>
   <test_depend>rostest</test_depend>
+  <test_depend>dynamic_reconfigure</test_depend>
 </package>

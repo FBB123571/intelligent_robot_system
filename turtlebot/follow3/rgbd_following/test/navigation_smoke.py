@@ -17,6 +17,7 @@ from geometry_msgs.msg import TransformStamped, Twist, PoseStamped
 from nav_msgs.msg import Odometry, OccupancyGrid
 from sensor_msgs.msg import Image, CameraInfo
 from std_msgs.msg import String, Bool
+from dynamic_reconfigure.msg import Config
 
 
 class NavigationSmoke(unittest.TestCase):
@@ -34,7 +35,7 @@ class NavigationSmoke(unittest.TestCase):
         q = mount.transform.rotation
         q.x,q.y,q.z,q.w = -.5,.5,-.5,.5
         static.sendTransform(mount)
-        seen = dict(valid=False, grid=False, positive=False, command=None, status='', gate='', grid_counts={})
+        seen = dict(valid=False, grid=False, positive=False, command=None, status='', gate='', grid_counts={}, dwa=None)
         def valid(m): seen['valid'] = m.data
         def grid(m):
             seen['grid'] = len(m.data)>0
@@ -44,11 +45,13 @@ class NavigationSmoke(unittest.TestCase):
             seen['positive'] = seen['positive'] or m.linear.x>0
         def status(m): seen['status'] = m.data
         def gate(m): seen['gate'] = m.data
+        def dwa(m): seen['dwa'] = dict((p.name,p.value) for p in m.doubles)
         subs = [rospy.Subscriber('/smoke/target_valid',Bool,valid),
                 rospy.Subscriber('/smoke/move_base/local_costmap/costmap',OccupancyGrid,grid),
                 rospy.Subscriber('/smoke/cmd_vel_preview',Twist,command),
                 rospy.Subscriber('/smoke/follow_status',String,status),
-                rospy.Subscriber('/smoke/gate_status',String,gate)]
+                rospy.Subscriber('/smoke/gate_status',String,gate),
+                rospy.Subscriber('/smoke/move_base/DWAPlannerROS/parameter_updates',Config,dwa)]
         x,y,heading = 0.,0.,0.
         start, last = time.time(), time.time()
         fault_since = None
@@ -63,6 +66,10 @@ class NavigationSmoke(unittest.TestCase):
             # stationary base before carrying starts. This is input generation,
             # not a recovery behavior: the controller still emits zero in idle.
             elapsed = wall-start
+            if seen['dwa'] is not None:
+                for key,value in [('max_trans_vel',.12),('min_trans_vel',.015),('max_rot_vel',.4),('min_rot_vel',.08)]:
+                    self.assertIn(key,seen['dwa'])
+                    self.assertAlmostEqual(seen['dwa'][key],value)
             if elapsed < 6.:
                 x,y,heading,v,w = 0.,0.,2*math.pi*elapsed/6.,0.,2*math.pi/6.
             elif elapsed < 7.:
@@ -111,6 +118,7 @@ class NavigationSmoke(unittest.TestCase):
                 self.assertIsNotNone(seen['command'])
                 self.assertEqual(seen['command'][1:],(0.,0.))
                 self.assertTrue(seen['grid'])
+                self.assertIsNotNone(seen['dwa'])
                 published = dict(rospy.get_published_topics())
                 self.assertNotIn('/smoke/cmd_vel_safe',published)
                 self.assertNotIn('/cmd_vel_mux/input/navi',published)
