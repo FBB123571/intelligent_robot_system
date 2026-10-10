@@ -40,9 +40,25 @@ def cloud_points(depth_m, camera, stride=4, near=0.4, far=4.0):
     fx, fy, cx, cy = camera
     rows, cols = np.mgrid[0:depth_m.shape[0]:stride, 0:depth_m.shape[1]:stride]
     z = depth_m[::stride, ::stride]
-    good = np.isfinite(z) & (z >= near) & (z <= far)
+    finite_z = np.isfinite(z)
+    safe_z = np.where(finite_z, z, 0.)
+    good = finite_z & (safe_z >= near) & (safe_z <= far)
     z, u, v = z[good], cols[good], rows[good]
     return np.column_stack(((u - cx) * z / fx, (v - cy) * z / fy, z)).astype(np.float32)
+
+
+def observation_clouds(depth_m, camera, perception):
+    """Separate measured obstacle endpoints from finite clearing endpoints.
+
+    Neither stream invents returns for zero/NaN/Inf pixels. The longer clearing
+    range is a sensor setting, not a replacement for invalid/background depth.
+    Old enrolled configurations retain their original range unless updated.
+    """
+    p = perception
+    obstacles = cloud_points(depth_m, camera, p['cloud_stride'], p['min_depth'], p['max_depth'])
+    clearing = cloud_points(depth_m, camera, p.get('clearing_stride', p['cloud_stride']),
+                            p['min_depth'], p.get('clearing_max_depth', p['max_depth']))
+    return obstacles, clearing
 
 
 def transform_points(points, translation, quaternion):

@@ -17,7 +17,7 @@ from rgbd_following_core.depth import check_pair
 from rgbd_following_core.motion import fresh
 from rgbd_following_core.settings import validate
 from rgbd_following_core.tracking import Tracker
-from rgbd_following_core.vision import intrinsics, metric_depth, cloud_points, detect, transform_points
+from rgbd_following_core.vision import intrinsics, metric_depth, observation_clouds, detect, transform_points
 
 
 class Target(object):
@@ -34,6 +34,7 @@ class Target(object):
         self.pub = rospy.Publisher('target_pose', PoseStamped, queue_size=1)
         self.valid = rospy.Publisher('target_valid', Bool, queue_size=1)
         self.cloud = rospy.Publisher('obstacle_cloud', PointCloud2, queue_size=1)
+        self.clearing = rospy.Publisher('clearing_cloud', PointCloud2, queue_size=1)
         self.status = rospy.Publisher('perception_status', String, queue_size=1)
         self.preview = rospy.Publisher('target_preview', Image, queue_size=1)
         self.inputs = [message_filters.Subscriber('rgb', Image, queue_size=1, buff_size=2**24),
@@ -66,12 +67,25 @@ class Target(object):
                 d = metric_depth(self.bridge.imgmsg_to_cv2(depth, 'passthrough'), depth.encoding)
                 if d.shape != (depth.height, depth.width) or image.shape[:2] != d.shape:
                     return self.reject('registered_size_mismatch')
-                points = cloud_points(d, camera, p['cloud_stride'], p['min_depth'], p['max_depth'])
+                points, clearing = observation_clouds(d, camera, p)
+                clearing_msg = create_cloud_xyz32(depth.header, clearing.tolist())
+                obstacle_msg = create_cloud_xyz32(depth.header, points.tolist())
+                if not fresh(min(stamps), rospy.Time.now().to_sec(), cfg['target_timeout']):
+                    return self.reject('processing_too_slow')
                 total = len(range(0, depth.width, p['cloud_stride'])) * len(range(0, depth.height, p['cloud_stride']))
-                if len(points) < p['min_cloud_points'] or len(points) / float(total) < p['min_cloud_ratio']:
-                    return self.reject('depth_coverage_insufficient')
+                insufficient = (len(points) < p['min_cloud_points'] or
+                                len(points) / float(total) < p['min_cloud_ratio'])
+                if insufficient:
+                    self.reject('depth_coverage_insufficient')
+                # Replace the latest marking observation even when sparse/empty:
+                # persistence=0 keeps the previous one until it is replaced.
+                # Otherwise old points get re-marked after every clearing pass.
+                # Empty marking observations do not erase occupied voxels.
                 # Keep all observed depth, including TonyPi, in collision geometry.
-                self.cloud.publish(create_cloud_xyz32(depth.header, points.tolist()))
+                self.cloud.publish(obstacle_msg)
+                self.clearing.publish(clearing_msg)
+                if insufficient:
+                    return
                 candidates, mask = detect(image, d, camera, p)
                 tf = self.buffer.lookup_transform(self.frame, depth.header.frame_id, depth.header.stamp, rospy.Duration(.05))
                 t, q = tf.transform.translation, tf.transform.rotation
@@ -90,6 +104,7 @@ class Target(object):
                 self.status.publish(String(data=json.dumps(dict(reason=self.tracker.reason,
                     target_valid=selected is not None, candidates=len(candidates), stamp=stamps[1],
                     identity_calibrated=cfg['identity_calibrated'], reacquired=self.tracker.reacquired,
+                    obstacle_points=len(points), clearing_points=len(clearing),
                     identity_scores=[c['identity_score'] for c in candidates]))))
                 view = image.copy()
                 for candidate in candidates:

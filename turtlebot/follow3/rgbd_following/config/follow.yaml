@@ -47,6 +47,10 @@ perception:
   min_width_m: 0.025
   max_width_m: 0.5
   cloud_stride: 4
+  # Separate clearing-only endpoints; check this range on the actual sensor.
+  # No-return, NaN and Inf pixels remain unknown, never maximum-range rays.
+  clearing_max_depth: 4.5
+  clearing_stride: 4
   min_cloud_points: 100
   min_cloud_ratio: 0.2
 tracker:

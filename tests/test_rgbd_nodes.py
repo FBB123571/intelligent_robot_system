@@ -389,7 +389,7 @@ class NodeTests(unittest.TestCase):
             n.last_pair = n.receipt = None
             n.tracker = Tracker(**self.c['tracker'])
             n.bridge, n.buffer = self.Mock(), self.Mock()
-            n.pub, n.valid, n.cloud, n.status, n.preview = [self.Mock() for unused in range(5)]
+            n.pub, n.valid, n.cloud, n.clearing, n.status, n.preview = [self.Mock() for unused in range(6)]
             rgb = np.zeros((240, 320, 3), np.uint8)
             rgb[90:150, 130:190] = (0, 220, 0)
             depth = np.full((240, 320), 2.5, np.float32)
@@ -411,10 +411,38 @@ class NodeTests(unittest.TestCase):
             self.assertEqual(target.header.frame_id, 'odom')
             self.assertAlmostEqual(target.pose.position.x, 2.7, places=5)
             self.assertEqual(n.cloud.publish.call_count, 4)
+            self.assertEqual(n.clearing.publish.call_count, 4)
+            self.assertIs(n.clearing.publish.call_args[0][0].header, messages[1].header)
             n.callback(*messages)
             n.valid.publish.assert_called_with(False)
             self.assertEqual(n.cloud.publish.call_count, 4)
+            self.assertEqual(n.clearing.publish.call_count, 4)
             self.assertEqual(json.loads(n.status.publish.call_args[0][0].data)['reason'], 'repeated_or_out_of_order_input')
+            # Freshness failure must not publish another clearing cloud either.
+            self.now += 1.
+            n.callback(*messages)
+            self.assertEqual(n.clearing.publish.call_count, 4)
+            depth[:] = 4.3
+            for message in messages:
+                message.header.stamp = self.Stamp(self.now)
+            n.callback(*messages)
+            self.assertEqual(n.clearing.publish.call_count, 5)
+            self.assertTrue(n.clearing.publish.call_args[0][0].points)
+            self.assertEqual(n.cloud.publish.call_count, 5)
+            self.assertFalse(n.cloud.publish.call_args[0][0].points)
+            n.valid.publish.assert_called_with(False)
+            self.assertEqual(json.loads(n.status.publish.call_args[0][0].data)['reason'], 'depth_coverage_insufficient')
+            # Sparse real foreground must replace old marking points too,
+            # even above the point-count threshold but below coverage ratio.
+            depth[:40, :80] = 1.2
+            self.now += .1
+            for message in messages:
+                message.header.stamp = self.Stamp(self.now)
+            n.callback(*messages)
+            self.assertEqual(n.cloud.publish.call_count, 6)
+            self.assertTrue(n.cloud.publish.call_args[0][0].points)
+            n.valid.publish.assert_called_with(False)
+            self.assertEqual(json.loads(n.status.publish.call_args[0][0].data)['reason'], 'depth_coverage_insufficient')
 
 
 if __name__ == '__main__':

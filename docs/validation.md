@@ -2,6 +2,10 @@
 
 ## 已进行的离线检查
 
+2026-10-10（虚拟机日期）方式三清障修复：拆分障碍标记与清障观测，清障保留量程内较远及车体高度之外的真实回波；无效深度仍不产生清障射线。Windows 全项目 **129 项测试通过、无跳过**，52 个 Python 文件及 XML/YAML 等结构检查通过。Ubuntu 16.04 / ROS Kinetic / Python 2.7 中 catkin 构建通过；独立 ROS master 的 `clearing_observations.test` 使用真实 VoxelLayer 验证远背景、高处端点、无效深度、前景遮挡、地面射线、同时标记/清障及空标记云替换旧缓存，共 1 个功能测试、7 类场景通过。原 `navigation_smoke.test` 导航和丢失停车也通过，未修改原通过条件。测试没有连接实车速度接口。
+
+现场 `obstacle_return_1791609527` 的深度和占用体素快照已用 `tools/replay_clearing_snapshot.py` 在另一独立 ROS master 重放：相同 4 像素步长下，4.0 m 观测保留 9 个旧体素、4 列；4.5 m 有效观测剩 5 个体素、2 列。两组均观测 40 次地图更新。剩余高度没有有效背景射线，不能改成自由空间；此结果是保存快照的受控重放，不是实机清除耗时或完整动态场景通过。部署重启地图后的空白也不算清障成功证据。
+
 2026-10-09 方式三四项优化：多视角外观模板、强身份匹配下的有界重识别与断裂轨迹处理；相机投影视野约束；里程计实际速度制动包络、VoxelLayer；登记/独立样本评估、录包/隔离回放与人工结论配合的赛道报告。补上导航终态回调锁定和本车持续停稳判定，包括终点附近重新识别后的停车。Windows Python 3.14.7 全项目 **113 项通过，无跳过**；46 个 Python 文件及 launch/test/package XML、配置语义检查通过。真实 Kinetic/Xenial 基础容器中 56 项核心测试：52 项通过，4 项 Python 3 报告加载测试明确跳过（已由 Windows 全量测试覆盖）；方式三节点及工具的 Python 2 语法解析通过。
 
 新增固定基础镜像摘要的 Kinetic Docker 构建和 ROS 导航冒烟测试。**真实 Kinetic catkin 构建及 ROS/cv_bridge/TF/VoxelLayer/DWA 冒烟已在 GitHub Actions 通过**，证据：[15c680f 的三项 CI](https://github.com/aliensco/intelligent_robot_system/actions/runs/38014320329)。测试确认实际生效的 DWA 限速、合成观测下的正向导航和简化底盘移动、丢失后速度归零、影子模式无底盘输出发布者；ROS 报告为 1 个功能测试成功（catkin 汇总另计包装测试，共 2 项、0 失败）。测试通过合成的赛前环视观测建立初始地图覆盖，不等于实机准备或完整赛道绕障。
@@ -32,7 +36,7 @@ python3 humanoid/scripts/competition.py --simulate
 
 | 项目 | 测量结果 | 操作者与日期 |
 |---|---|---|
-| VM ROS 发行版与 Python 版本 | 待确认，Ubuntu 16.04 按 Kinetic 配置 | |
+| VM ROS 发行版与 Python 版本 | Ubuntu 16.04 / ROS Kinetic / Python 2.7，已连接实机确认 | 2026-10-10 |
 | Pi SDK 与 Python 版本 | 待测 | |
 | 抓取物体尺寸、重量、颜色 | 待测 | |
 | head pan/tilt 零位 | 待测 | |

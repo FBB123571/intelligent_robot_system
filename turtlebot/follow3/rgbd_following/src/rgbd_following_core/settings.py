@@ -65,6 +65,13 @@ def validate(config, execute=False):
     for key in ('cloud_stride', 'min_cloud_points', 'min_depth_samples'):
         if not isinstance(p[key], int):
             raise ValueError('Expected integer: ' + key)
+    p.setdefault('clearing_max_depth', p['max_depth'])
+    p.setdefault('clearing_stride', p['cloud_stride'])
+    positive(p, ('clearing_max_depth', 'clearing_stride'))
+    if p['clearing_max_depth'] < p['max_depth']:
+        raise ValueError('Clearing range must include the obstacle range')
+    if not isinstance(p['clearing_stride'], int) or p['clearing_stride'] > p['cloud_stride']:
+        raise ValueError('Clearing stride must be an integer no coarser than obstacle stride')
     if not p['hsv_bands']:
         raise ValueError('At least one calibrated HSV band is required')
     for band in p['hsv_bands']:
