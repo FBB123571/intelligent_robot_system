@@ -79,7 +79,7 @@ Pi 上先确认 `python3 -c 'import cv2, numpy, yaml'` 成功。原装 SDK 的�
 3. 测量一次抱物前进的距离、左右转角和脚掌摆动范围，调整 `route` 中的 `cycles`。这些次数不是米或角度。
 4. 将验证后的动作复制到 `/home/pi/TonyPi/ActionGroups/`，配置动作名；核对抓取位置和所有姿态衔接。
 5. 地图跟随联调时启用 `heartbeat.enabled`，将 `host` 填运行 ROS 心跳桥的电脑 IP。确认桥的 `sender_ip` 是 Pi IP、`session` 一致。
-6. 按[反馈指南](docs/grasp_safety_placement.md)标定持物/放置 ROI、接入实时测距并验证重抓复位。默认终点放置许可由操作员或外部适配器发出。
+6. 已确认 TonyPi 无测距传感器，按[反馈指南](docs/grasp_safety_placement.md)标定持物/放置 ROI、灰色地面通道及抱物后的可见范围，并验证重抓复位。默认终点放置许可由操作员或外部适配器发出。
 7. 完成实机验证后设置 `hardware_calibrated: true`。
 
 仅查看视觉和打印动作，不发舵机命令：

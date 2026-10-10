@@ -36,7 +36,7 @@ rostopic info /tb2/cmd_vel_mux/input/navi
 
 ## 正式运行
 
-裁判发令前启动实时测距适配器；发令后在 Pi 运行 `competition.py --execute`。程序识别蓝色、接近并抓取，持物反馈成功后才发布 carrying。失败时有限次数复位并重新识别。后车积累足够前车轨迹后逐台启动；没有可靠目标时不自行巡游搜索。终点进入 checking_placement 时按[反馈指南](grasp_safety_placement.md)提供放置许可。
+当前硬件无测距传感器，裁判发令前确认相机通道检测已标定、抱物后仍看得清前方；若加装测距并切换模式，再启动对应适配器。发令后在 Pi 运行 `competition.py --execute`。程序识别蓝色、接近并抓取，持物反馈成功后才发布 carrying。失败时有限次数复位并重新识别。后车积累足够前车轨迹后逐台启动；没有可靠目标时不自行巡游搜索。终点进入 checking_placement 时按[反馈指南](grasp_safety_placement.md)提供放置许可。
 
 Pi 完成放下后继续发 done，不立即退出。每车达到带间隔的终点跟随点后，其 follow_status 应为 finished。观察整个队列已在终点区域且停稳后，结束 Pi 进程和 ROS 节点。
 

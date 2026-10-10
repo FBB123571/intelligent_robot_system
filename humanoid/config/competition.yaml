@@ -46,6 +46,20 @@ feedback:
   placement_ready: {mode: file, file: /tmp/tonypi_placement.json, timeout: 30.0, max_age: 0.5, stable_samples: 3}
 obstacle_guard:
   enabled: true
+  # Confirmed hardware has camera, no ranging sensor. This is an image guard.
+  mode: vision
+  roi: null
+  # Grey floor prior from the team; tune under actual lighting.
+  floor_lower_hsv: [0, 0, 40]
+  floor_upper_hsv: [179, 65, 235]
+  # Optional blue target interaction region, ignored ONLY in pickup/release phases.
+  interaction_roi: null
+  contour_fraction: 0.06
+  occupancy_fraction: 0.15
+  min_visible_fraction: 0.5
+  edge_fraction: 0.015
+  edge_contour_height: 0.30
+  # Retained for optional future mode: distance.
   file: /tmp/tonypi_distance.json
   max_age: 0.3
   # Calibrate for body/arms/load envelope, sensor offset and stopping travel.

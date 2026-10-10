@@ -36,6 +36,11 @@ def main():
         feedback_check['feedback']['held_roi'] = [0, 0, .4, .4]
     if feedback_check['feedback']['placed_roi'] is None:
         feedback_check['feedback']['placed_roi'] = [.6, .6, 1, 1]
+    if feedback_check['obstacle_guard'].get('mode') == 'vision':
+        for key, value in (('roi', [.1, .5, .9, 1]), ('floor_lower_hsv', [0, 0, 40]),
+                           ('floor_upper_hsv', [179, 60, 220])):
+            if feedback_check['obstacle_guard'].get(key) is None:
+                feedback_check['obstacle_guard'][key] = value
     validate_feedback(feedback_check)
     validate_rgbd(yaml.safe_load((ROOT / 'turtlebot/follow3/rgbd_following/config/follow.yaml').read_text(encoding='utf-8')))
     navigation = yaml.safe_load((ROOT / 'turtlebot/follow3/rgbd_following/config/navigation.yaml').read_text(encoding='utf-8'))

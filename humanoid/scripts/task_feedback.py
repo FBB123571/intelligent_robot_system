@@ -147,10 +147,36 @@ def validate_feedback(config):
     if not config['actions'].get('retry_reset'):
         raise ValueError('retry_reset action required')
     guard = config['obstacle_guard']
-    if guard.get('enabled') is not True or not guard.get('file'):
-        raise ValueError('Hardware execution requires an enabled distance guard and live sensor file')
-    for key in ('max_age', 'stop_distance_m', 'poll_seconds'):
+    mode = guard.get('mode', 'distance')
+    if guard.get('enabled') is not True or mode not in ('vision', 'distance'):
+        raise ValueError('Hardware execution requires vision or distance obstacle guard')
+    if mode == 'distance' and not guard.get('file'):
+        raise ValueError('Distance mode requires a live sensor file')
+    keys = ('max_age', 'poll_seconds') + (('stop_distance_m',) if mode == 'distance' else ())
+    for key in keys:
         if not isinstance(guard[key], (int, float)) or not math.isfinite(guard[key]) or guard[key] <= 0:
             raise ValueError('Invalid obstacle guard ' + key)
     if guard['poll_seconds'] > .1:
         raise ValueError('Guard polling must be <= 0.1 seconds')
+    if mode == 'vision':
+        for key in ('roi', 'interaction_roi'):
+            roi = guard.get(key)
+            if key == 'interaction_roi' and roi is None:
+                continue
+            if not isinstance(roi, list) or len(roi) != 4 or not all(
+                    isinstance(v, (int, float)) and math.isfinite(v) and 0 <= v <= 1 for v in roi
+                    ) or roi[0] >= roi[2] or roi[1] >= roi[3]:
+                raise ValueError('Calibrate camera obstacle ' + key)
+        for key in ('floor_lower_hsv', 'floor_upper_hsv'):
+            values = guard.get(key)
+            if not isinstance(values, list) or len(values) != 3 or any(
+                    isinstance(v, bool) or not isinstance(v, int) or not 0 <= v <= limit
+                    for v, limit in zip(values, (179, 255, 255))):
+                raise ValueError('Calibrate ' + key)
+        if any(a > b for a, b in zip(guard['floor_lower_hsv'], guard['floor_upper_hsv'])):
+            raise ValueError('Floor HSV lower exceeds upper')
+        for key in ('contour_fraction', 'occupancy_fraction', 'min_visible_fraction',
+                    'edge_fraction', 'edge_contour_height'):
+            value = guard[key]
+            if not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 < value <= 1:
+                raise ValueError('Invalid camera guard ' + key)
