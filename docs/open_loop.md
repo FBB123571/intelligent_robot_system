@@ -1,6 +1,6 @@
 # 开环固定动作版本
 
-入口 `humanoid/scripts/open_loop.py`，配置 `humanoid/config/open_loop.yaml`。直接执行：grab 一次 → grab_go_forward 十次 → 网页控制 left 十次 → grab_go_forward 十次 → 网页控制 right 十次 → grab_go_forward 十次 → 网页控制 release_legacy 一次，共 52 次动作调用。
+入口 `humanoid/scripts/open_loop.py`，配置 `humanoid/config/open_loop.yaml`。直接执行：stand 一次 → grab 一次 → grab_go_forward 十次 → 网页控制 left 十次 → grab_go_forward 十次 → 网页控制 right 十次 → grab_go_forward 十次 → 网页控制 release_legacy 一次，共 53 次动作调用。初始站立使用 `/home/pi/TonyPi/ActionGroups/stand.d6a`。
 
 直走使用 `/home/pi/TonyPi/ActionGroups` 的文件，抓取、左右转和放置使用 `/home/pi/tonypi_web_control/actions` 的指定文件。执行前读取并检查所有文件的 SQLite 帧格式；不打开摄像头、不定位物块、不确认抓取/放置、不重抓、不检测障碍、不调整头部，也不发送 Turtlebot 心跳。所有已确认身体关节 1–16 按文件原值发送，不额外锁定手臂；未确认的 17/18 列不发送。按各帧时长等待，没有额外插入站立动作或动作间停顿。
 
