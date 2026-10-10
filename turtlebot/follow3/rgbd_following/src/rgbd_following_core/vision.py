@@ -61,6 +61,9 @@ def detect(rgb, depth_m, camera, config):
     """Return independent candidates; tracker handles association and ambiguity."""
     if rgb.shape[:2] != depth_m.shape:
         raise ValueError('registered_size_mismatch')
+    if config.get('proposal_mode', 'color') == 'depth_body':
+        from .body import detect_body
+        return detect_body(rgb, depth_m, camera, config)
     hsv = cv2.cvtColor(rgb, cv2.COLOR_BGR2HSV)
     mask = np.zeros(depth_m.shape, dtype=np.uint8)
     for band in config['hsv_bands']:

@@ -311,7 +311,7 @@ docker run --rm rgbd-kinetic-check
 
 ## 离线验证与技术依据
 
-当前 Windows 独立虚拟环境中全项目 113 项测试通过，无跳过；Kinetic/Xenial 基础容器下 52 项核心测试通过，4 项仅适用于 Python 3 的报告测试跳过。完整 ROS/navigation 集成与硬件验收状态见 [验证记录](../../docs/validation.md)。
+当前 Windows 独立虚拟环境中全项目 122 项测试通过，无跳过；新增无色标检测的 9 项测试也已在实机连接的 Kinetic/Python 2.7 虚拟机通过，catkin 构建通过。此前 Kinetic/Xenial 基础容器下 52 项核心测试通过，4 项仅适用于 Python 3 的报告测试跳过。完整 ROS/navigation 集成与硬件验收状态见 [验证记录](../../docs/validation.md)。
 
 ```bash
 python3 tools/validate_project.py
@@ -321,3 +321,35 @@ python -m unittest discover -s tests -p 'test_rgbd*.py' -v
 深度和控制核心测试不依赖 ROS、OpenCV 或 NumPy，可用 Python 2.7/3；视觉流水线测试需 OpenCV/NumPy/PyYAML；ROS 适配层替身测试使用 Python 3。Windows 可使用仓库 `.venv/Scripts/python.exe`，虚拟机的 ROS 节点仍使用其系统 Python 2.7。真实 ROS 构建、move_base 避障、图像显示和硬件性能仍需虚拟机/设备验证。
 
 接口核对来源：[ROS 深度图单位规范](https://github.com/ros-infrastructure/rep/blob/master/rep-0118.rst)、[Kinetic 消息同步器](https://github.com/ros/ros_comm/blob/kinetic-devel/utilities/message_filters/src/message_filters/__init__.py)、[Kinetic cv_bridge](https://github.com/ros-perception/vision_opencv/blob/kinetic/cv_bridge/python/cv_bridge/core.py)。
+
+## 不加色标的现场标定
+
+黑白 TonyPi 的正面白色胸板在背面不可见，不能直接沿用绿色示例或胸板模板。
+可在本地配置中设置 `perception.proposal_mode: depth_body`，清空旧 `identity.references`，
+使用已有 `tools/enroll_rgbd_identity.py` 重新登记正面、背面、左右侧和抱物状态的完整身体样本。
+manifest 的 ROI 此时选择整个身体候选中心；`body` 中的宽高范围需按实际设备检查。
+此模式不依赖 `hsv_bands` 分割，但保留该字段以兼容默认配置结构。
+
+算法从画面下半部深度拟合可见地面，在地面上方按重叠深度区间提出身体候选，
+结合物理尺寸、近地支撑、空间明暗/色彩分布和轮廓匹配固定模板。
+灰色区域使用亮度特征，避免仅用不稳定的灰色色相。
+没有可靠地面时不输出候选；多个不同物体不合并为一个目标，跟踪器继续按歧义停车。
+地面剔除只用于识别，避障点云仍保留原有全部深度观测。
+该方法假设相机基本直立、能看到平坦地面；台阶、地面被遮挡、裁切身体和相似外观干扰均须另测。
+增加模板不会自动解决所有遮挡，所有实机校准标志仍必须保持 false，直到对应验收完成。
+
+现场 Kinect 驱动实际配准深度话题为 `/camera/depth_registered/hw_registered/image_rect`，
+不同驱动应先核实话题，不能直接套默认名。
+无需底盘 TF 的独立预览只发布图像和诊断，不发布目标、导航或速度：
+
+```bash
+roslaunch rgbd_following identity_preview.launch settings:=/absolute/path/body.local.yaml
+rosrun image_view image_view image:=/rgbd_identity_preview/preview
+```
+
+窗口显示 `UNVALIDATED - MOTION DISABLED`，框为外观候选，不代表已通过身份验收。
+输入过期时显示空白错误画面，防止把旧图当实时结果。
+首次现场仅采集了正、背面各一组样本；背面实时静止观察 10 秒，共 47 帧均有一个候选，
+检测耗时最高约 20 ms。这是单场景初步证据，不是整场成功率或满分证明。
+左右侧、抱物、无目标、同色干扰、遮挡、相机外参及真实制动仍未完成。
+采集的原始图像、深度和未验证模板保存在操作机器上，不提交到仓库。

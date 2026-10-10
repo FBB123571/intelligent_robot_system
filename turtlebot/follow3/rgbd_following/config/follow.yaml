@@ -16,6 +16,15 @@ visibility:
   margin: 0.12
   camera_timeout: 1.0
 perception:
+  proposal_mode: color
+  # Optional markerless depth_body mode needs NEW full-body view enrollment.
+  # Requires a visible flat floor and roughly upright camera. Field validation
+  # is still required; these ranges are examples, not measured robot dimensions.
+  body:
+    min_width_m: 0.10
+    max_width_m: 0.45
+    min_height_m: 0.20
+    max_height_m: 0.55
   identity:
     # Enroll actual front/back/side/carrying views with tools/enroll_rgbd_identity.py.
     # Empty templates permit shadow diagnostics only; execution requires templates.

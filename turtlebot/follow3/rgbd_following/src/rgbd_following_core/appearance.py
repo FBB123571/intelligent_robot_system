@@ -18,8 +18,17 @@ def signature_distance(left, right):
 def match_reference(feature, references, shape_ratio=2., width_ratio=1.8):
     scores = []
     for ref in references:
+        if feature.get('kind', 'color_v1') != ref.get('kind', 'color_v1'):
+            continue
         shape = feature['aspect'] / ref['aspect']
         width = feature['width_m'] / ref['width_m']
         if 1. / shape_ratio <= shape <= shape_ratio and 1. / width_ratio <= width <= width_ratio:
-            scores.append(signature_distance(feature['histogram'], ref['histogram']))
+            score = signature_distance(feature['histogram'], ref['histogram'])
+            if feature.get('kind') == 'depth_body_v1':
+                height = feature['height_m'] / ref['height_m']
+                if not 1. / width_ratio <= height <= width_ratio:
+                    continue
+                outline = math.sqrt(sum((x-y)**2 for x,y in zip(feature['silhouette'], ref['silhouette'])) / 64.)
+                score = max(score, .6 * outline)
+            scores.append(score)
     return min(scores) if scores else 1.

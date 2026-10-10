@@ -30,6 +30,13 @@ def validate(config, execute=False):
     for ref in identity['references']:
         positive(ref, ('aspect', 'width_m'))
         signature_distance(ref['histogram'], ref['histogram'])
+        kind = ref.get('kind', 'color_v1')
+        if kind not in ('color_v1', 'depth_body_v1'):
+            raise ValueError('Unknown identity feature kind')
+        if kind == 'depth_body_v1':
+            positive(ref, ('height_m',))
+            if len(ref.get('silhouette', [])) != 64 or not all(finite(v) and 0 <= v <= 1 for v in ref['silhouette']):
+                raise ValueError('Invalid body silhouette')
     if not config['follow_distance'] > config['minimum_distance'] > 2 * config['footprint_radius']:
         raise ValueError('Require follow_distance > minimum_distance > twice footprint radius')
     if config['sync_slop'] >= config['target_timeout']:
@@ -37,6 +44,18 @@ def validate(config, execute=False):
     if config['max_linear'] > .3 or config['max_angular'] > .8:
         raise ValueError('Competition speed limit exceeded')
     p = config['perception']
+    mode = p.get('proposal_mode', 'color')
+    if mode not in ('color', 'depth_body'):
+        raise ValueError('Unknown proposal mode')
+    expected = 'depth_body_v1' if mode == 'depth_body' else 'color_v1'
+    if any(ref.get('kind', 'color_v1') != expected for ref in identity['references']):
+        raise ValueError('Identity references do not match proposal mode; enroll new views')
+    if mode == 'depth_body':
+        body = p['body']
+        positive(body, ('min_width_m', 'max_width_m', 'min_height_m', 'max_height_m'))
+        if not (body['min_width_m'] < body['max_width_m'] <= .8 and
+                body['min_height_m'] < body['max_height_m'] <= .8):
+            raise ValueError('Invalid body dimensions')
     positive(p, ('min_area_ratio', 'max_area_ratio', 'min_depth', 'max_depth',
                  'min_depth_samples', 'min_valid_ratio', 'max_depth_spread', 'depth_cluster_band',
                  'min_width_m', 'max_width_m', 'cloud_stride', 'min_cloud_points', 'min_cloud_ratio'))
