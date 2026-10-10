@@ -1,10 +1,10 @@
 # 开环固定动作版本
 
-入口 `humanoid/scripts/open_loop.py`，配置 `humanoid/config/open_loop.yaml`。直接执行：stand 一次 → grab 一次 → grab_go_forward 十次 → 网页控制 left 十次 → grab_go_forward 十次 → 网页控制 right 十次 → grab_go_forward 十次 → 网页控制 release_legacy 一次，共 53 次动作调用。初始站立使用 `/home/pi/TonyPi/ActionGroups/stand.d6a`。
+入口 `humanoid/scripts/open_loop.py`，配置 `humanoid/config/open_loop.yaml`。直接执行：stand 一次 → grab 一次 → grab_go_forward 十次 → 网页控制 carry_left 十次 → grab_go_forward 十次 → 网页控制 carry_right 十次 → grab_go_forward 十次 → 网页控制 release_legacy 一次，共 53 次动作调用。初始站立使用 `/home/pi/TonyPi/ActionGroups/stand.d6a`。左右转分别使用 `/home/pi/tonypi_web_control/actions/carry_left.d6a` 和 `/home/pi/tonypi_web_control/actions/carry_right.d6a`。
 
 直走使用 `/home/pi/TonyPi/ActionGroups` 的文件，抓取、左右转和放置使用 `/home/pi/tonypi_web_control/actions` 的指定文件。执行前读取并检查所有文件的 SQLite 帧格式；不打开摄像头、不定位物块、不确认抓取/放置、不重抓、不检测障碍、不调整头部，也不发送 Turtlebot 心跳。所有已确认身体关节 1–16 按文件原值发送，不额外锁定手臂；未确认的 17/18 列不发送。按各帧时长等待，没有额外插入站立动作或动作间停顿。
 
-抓取动作已改为 `/home/pi/tonypi_web_control/actions/grab.d6a`；直走仍使用 `/home/pi/TonyPi/ActionGroups/grab_go_forward.d6a`。四个网页控制动作的快照保存在 `humanoid/ActionGroup/web_control_reference`，便于同步与追溯；配置仍指向你指定的网页控制目录，未覆盖这些实机文件。
+抓取动作已改为 `/home/pi/tonypi_web_control/actions/grab.d6a`；直走仍使用 `/home/pi/TonyPi/ActionGroups/grab_go_forward.d6a`。网页控制动作的快照保存在 `humanoid/ActionGroup/web_control_reference`，包含当前 carry_left/carry_right 及之前 left/right 版本，便于同步与追溯；配置仍指向你指定的网页控制目录，未覆盖这些实机文件。
 
 ```bash
 cd /home/pi/intelligent_robot_system
