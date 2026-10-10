@@ -4,7 +4,9 @@
 
 2026-10-09 方式三四项优化：多视角外观模板、强身份匹配下的有界重识别与断裂轨迹处理；相机投影视野约束；里程计实际速度制动包络、VoxelLayer；登记/独立样本评估、录包/隔离回放与人工结论配合的赛道报告。补上导航终态回调锁定和本车持续停稳判定，包括终点附近重新识别后的停车。Windows Python 3.14.7 全项目 **113 项通过，无跳过**；46 个 Python 文件及 launch/test/package XML、配置语义检查通过。真实 Kinetic/Xenial 基础容器中 56 项核心测试：52 项通过，4 项 Python 3 报告加载测试明确跳过（已由 Windows 全量测试覆盖）；方式三节点及工具的 Python 2 语法解析通过。
 
-新增固定基础镜像摘要的 Kinetic Docker 构建和 ROS 导航冒烟测试。本地依赖安装遇到 Ubuntu 旧源 502/超时，已停止该下载，转由 GitHub Actions 完成真实 Kinetic catkin 构建。首轮真实节点测试发现 DWA 速度参数名与 Kinetic 不匹配，现已改用 max_trans_vel/min_trans_vel/max_rot_vel/min_rot_vel，并检查运行时动态配置；导航冒烟结果仍在验证。未连接 Kinect、底盘或进行真实赛道验收；模板默认仍为空，实机执行需真实模板与完整标定。视野约束仅做短时固定目标投影，VoxelLayer 也不能替代真实盲区检查。
+新增固定基础镜像摘要的 Kinetic Docker 构建和 ROS 导航冒烟测试。**真实 Kinetic catkin 构建及 ROS/cv_bridge/TF/VoxelLayer/DWA 冒烟已在 GitHub Actions 通过**，证据：[15c680f 的三项 CI](https://github.com/aliensco/intelligent_robot_system/actions/runs/38014320329)。测试确认实际生效的 DWA 限速、合成观测下的正向导航和简化底盘移动、丢失后速度归零、影子模式无底盘输出发布者；ROS 报告为 1 个功能测试成功（catkin 汇总另计包装测试，共 2 项、0 失败）。测试通过合成的赛前环视观测建立初始地图覆盖，不等于实机准备或完整赛道绕障。
+
+集成验证中修正了 Kinetic 的 DWA 参数名，并将原地转动最低速度设为第一控制周期可达的值；静态校验也检查此起步条件。本地旧软件源下载遭遇 502/超时后已停止，ROS 验证由上述远端环境完成。未连接 Kinect、底盘或进行真实赛道验收；模板默认仍为空，实机执行需真实模板与完整标定。视野约束仅做短时固定目标投影，VoxelLayer 也不能替代真实盲区检查。
 
 2026-10-09 方式三控制链路开发：在仓库独立 `.venv` 安装 PyYAML 6.0.3、NumPy 2.5.3、OpenCV headless 5.0.0.93，Python 3.14.7 下全项目 **88 项测试通过，无跳过**；其中方式三 56 项。38 个 Python 文件及 XML/YAML/动作结构与方式三配置语义检查通过。覆盖真实 OpenCV 合成图像检测、毫米/米换算、颜色歧义、连续关联、目标丢失与超时、光学坐标变换、停止路径碰撞、影子模式无底盘发布者、未标定拒绝执行、导航失败锁定、最终目标小位移以及整车进入终点。已编写 move_base 滚动 odom 地图与 DWA 配置，但没有运行真实 ROS/navigation，因此不能把核心和消息替身测试称为实际绕障测试。Kinetic 的旧版 OpenCV、Python 2、catkin 构建和整车性能仍待验证；CI 已增加纯核心 Python 2 测试但本次未执行远端 CI。
 
