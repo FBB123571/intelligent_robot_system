@@ -5,23 +5,15 @@
   "files": [
     {
       "path": "backward.d6a",
-      "sha256": "e7ed88be1746d54faf82502df481bbc8937484d7c7ab84b904016f01232d0ec8",
+      "sha256": "1ce87633a508a17160c984cc42c17c588f0effb12f61fa39a0fa684bc35c58cc",
       "size": 8192,
       "frames": 10,
       "duration_ms": 4400,
       "channels": 16
     },
     {
-      "path": "carry_forward.d6a",
-      "sha256": "5feffd907a8aad003a3333e374970bf5d1d858d76a7241e365a88fadbb58591a",
-      "size": 8192,
-      "frames": 12,
-      "duration_ms": 2565,
-      "channels": 16
-    },
-    {
       "path": "carry_forward_left5.d6a",
-      "sha256": "0b09eaf7f08a1fac7d61ce0e8f50b42c3c5cf4e2d86099914b3a94c98227ca7d",
+      "sha256": "b570b39efa8ae21ea1ccd5feaf0a76a58ba3847c6857c1a984f78ebf255a7dc1",
       "size": 8192,
       "frames": 12,
       "duration_ms": 2565,
@@ -29,7 +21,7 @@
     },
     {
       "path": "carry_left.d6a",
-      "sha256": "3eef7e346a15f913bb3938004c47b230d3893361e8f390019ecaa39ce7a9cdd2",
+      "sha256": "58428e792e08d81dcdc1d3d6574b804cb0034456c92297645135377dbcb5876c",
       "size": 8192,
       "frames": 8,
       "duration_ms": 2450,
@@ -37,7 +29,7 @@
     },
     {
       "path": "carry_right.d6a",
-      "sha256": "411ce5a37e00b81cc2754739950ef73474006ec364512dfce3b73286f0863a3d",
+      "sha256": "03c99476e703f09960c93a92932727d0f46bc9b7a3fac28c676f866a8c577391",
       "size": 8192,
       "frames": 8,
       "duration_ms": 2550,
@@ -45,7 +37,7 @@
     },
     {
       "path": "forward.d6a",
-      "sha256": "f161b61a2ad634e82344b4d177382ac69fdc3ca828557889aba33bec97255a50",
+      "sha256": "cbbd9ac44692993efc7ae689d2c3bc407ef537ab4ebdb60ebef4bab597bef6ea",
       "size": 8192,
       "frames": 6,
       "duration_ms": 1250,
@@ -53,7 +45,7 @@
     },
     {
       "path": "grab.d6a",
-      "sha256": "fd79be6187355bffd89d80b08b0d27bae39a24d73346bb554e4718f86095bb1a",
+      "sha256": "2c5ffc3bd29447bfe45d4c67e7ebf47dafb0449019378b24f2835dda0d11bf91",
       "size": 8192,
       "frames": 6,
       "duration_ms": 5400,
@@ -61,7 +53,7 @@
     },
     {
       "path": "left.d6a",
-      "sha256": "4b774843f2aeb9c9fa223934fdc507f4756573264aa5dccaf24c0dfdb0b77103",
+      "sha256": "1969dad5898d69e52af243b1f05a250339354cdff6a44aadbba3bcdc84787956",
       "size": 8192,
       "frames": 8,
       "duration_ms": 2450,
@@ -69,7 +61,7 @@
     },
     {
       "path": "release.d6a",
-      "sha256": "d5df628050a41ac6aef2b8f4990c29251e025d061a6ccae14f93aed73ead2770",
+      "sha256": "03a685289091946ceeb006835bef643605826801b23ab3293b2a87e91dbead45",
       "size": 8192,
       "frames": 7,
       "duration_ms": 5850,
@@ -77,7 +69,7 @@
     },
     {
       "path": "right.d6a",
-      "sha256": "325bb417afc67a41a5b25c01d79a56ffbfcd62fea809852670e3c8c45871c2ef",
+      "sha256": "279123deb5ef81971f1ae9ab65e3ba16aacef7c375531fa2f2873bf220b6cd3a",
       "size": 8192,
       "frames": 8,
       "duration_ms": 2550,

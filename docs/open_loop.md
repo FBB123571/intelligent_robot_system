@@ -4,7 +4,7 @@
 
 直走使用 `/home/pi/TonyPi/ActionGroups` 的文件，抓取、左右转和放置使用 `/home/pi/tonypi_web_control/actions` 的指定文件。执行前读取并检查所有文件的 SQLite 帧格式；不打开摄像头、不定位物块、不确认抓取/放置、不重抓、不检测障碍、不调整头部，也不发送 Turtlebot 心跳。所有已确认身体关节 1–16 按文件原值发送，不额外锁定手臂；未确认的 17/18 列不发送。按各帧时长等待，没有额外插入站立动作或动作间停顿。
 
-抓取动作已改为 `/home/pi/tonypi_web_control/actions/grab.d6a`；直走仍使用 `/home/pi/TonyPi/ActionGroups/grab_go_forward.d6a`。网页控制目录当前全部 10 个动作文件已完整同步到 `humanoid/ActionGroup/web_control_reference`，附有 SHA256 清单，便于同步与追溯；配置仍指向你指定的网页控制目录，未覆盖这些实机文件。
+抓取动作已改为 `/home/pi/tonypi_web_control/actions/grab.d6a`；直走仍使用 `/home/pi/TonyPi/ActionGroups/grab_go_forward.d6a`。网页控制目录当前全部 9 个动作文件已完整同步到 `humanoid/ActionGroup/web_control_reference`，附有 SHA256 清单，便于同步与追溯；配置仍指向你指定的网页控制目录，未覆盖这些实机文件。
 
 ```bash
 cd /home/pi/intelligent_robot_system
