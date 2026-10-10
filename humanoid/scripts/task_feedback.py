@@ -72,6 +72,9 @@ class TaskFeedback:
             print('[feedback simulated]', event)
             return True
         spec = self.config[event]
+        view = getattr(self.motion, 'debug_view', None)
+        if view:
+            view.update('Feedback %s: waiting for NEW samples 0/%d' % (event, spec['stable_samples']))
         after_wall, last_camera = time.time(), time.monotonic()
         deadline = last_camera + spec['timeout']
         consecutive, valid = 0, 0
@@ -103,6 +106,10 @@ class TaskFeedback:
                     not held and roi_present(frame, self.config['placed_roi'], self.vision, self.detect))
             valid += 1
             consecutive = consecutive + 1 if positive else 0
+            view = getattr(self.motion, 'debug_view', None)
+            if view:
+                view.update('Feedback %s: %s %d/%d' % (event, 'yes' if positive else 'no',
+                                                       consecutive, spec['stable_samples']))
             if consecutive >= spec['stable_samples']:
                 print('[feedback confirmed]', event)
                 return True

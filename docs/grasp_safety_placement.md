@@ -38,6 +38,8 @@ python3 humanoid/scripts/competition.py --vision-only --debug
 
 Windows 使用 `python`；GUI 预览需要有窗口支持的 OpenCV，headless 包仅用于离线测试。
 
+比赛中也可运行 `competition.py --execute --debug`。原画面目标框、标签、状态、动作和反馈进度会在动作等待期间持续刷新；窗口操作见[可视化指南](humanoid_debug.md)。
+
 `feedback.held_roi` 是抓取结束并提起后，手中物块应出现的画面区域；`placed_roi` 是放下后物块应出现的地面/平台区域。使用归一化坐标 `[x0,y0,x1,y1]`，例如画面横向 100..200 像素、纵向 60..120 像素，在 320×240 图像上为 `[0.3125,0.25,0.625,0.5]`。这是计算示例，不是实际推荐区域。
 
 两区域必须互不重叠，手中区域应排除地面原物块位置、蓝色衣物及背景。默认值为 null，实机启动会要求先标定。预览会画出已配置区域。`roi_min_area/roi_max_area` 是轮廓面积占所选 ROI 的比例，不是原图比例。

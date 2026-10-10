@@ -25,6 +25,7 @@ sys.path.insert(0, str(ROOT / 'turtlebot/follow2/multi_robot_following/src'))
 from competition_core.mission import Approach, validate_route
 from task_feedback import DistanceGuard, TaskFeedback, validate_feedback
 from vision_guard import VisionGuard, floor_obstacle
+from debug_view import DebugView
 
 
 class Stopped(RuntimeError):
@@ -109,6 +110,9 @@ class Motion(object):
     def check_safety(self):
         if self.stop.is_set():
             raise Stopped('stop requested')
+        view = getattr(self, 'debug_view', None)
+        if view:
+            view.poll()
         guard = getattr(self, 'guard', None)
         if guard:
             guard.check()
@@ -140,6 +144,7 @@ class Motion(object):
             print('[stop] Servo stop failed:', exc)
 
     def head(self):
+        self.current_kind, self.current_action = 'head', 'head positioning'
         if isinstance(getattr(self, 'guard', None), VisionGuard):
             self.guard.phase = 'head'
         self.check_safety()
@@ -156,6 +161,7 @@ class Motion(object):
         self.wait(0.6)
 
     def action(self, kind):
+        self.current_kind, self.current_action = kind, self.config['actions'][kind]
         if isinstance(getattr(self, 'guard', None), VisionGuard):
             self.guard.phase = kind
         self.check_safety()
@@ -234,7 +240,7 @@ class Camera(object):
         self.worker.join(1)
 
 
-def detect(frame, config):
+def detect_details(frame, config):
     import cv2
     import numpy as np
     image = cv2.resize(frame, (320, 240))
@@ -252,10 +258,21 @@ def detect(frame, config):
     contours = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
     valid = [c for c in contours if config['min_area'] <= cv2.contourArea(c) / (320 * 240.0) <= config['max_area']]
     if not valid:
-        return None, mask
+        return None, mask, []
+    boxes = []
+    for candidate in valid:
+        x, y, w, h = cv2.boundingRect(candidate)
+        boxes.append({'bbox': [x / 320.0, y / 240.0, w / 320.0, h / 240.0],
+                      'area': cv2.contourArea(candidate) / (320 * 240.0)})
     contour = max(valid, key=cv2.contourArea)
     x, y, w, h = cv2.boundingRect(contour)
-    return ((x + w / 2.0) / 320, (y + h) / 240.0, cv2.contourArea(contour) / (320 * 240.0)), mask
+    return ((x + w / 2.0) / 320, (y + h) / 240.0, cv2.contourArea(contour) / (320 * 240.0)), mask, boxes
+
+
+def detect(frame, config):
+    # Preserve the decision API; boxes are only extra metadata for rendering.
+    observation, mask, unused = detect_details(frame, config)
+    return observation, mask
 
 
 def check_hold(config):
@@ -309,6 +326,9 @@ def grasp_and_carry(config, motion, heartbeat, approach, feedback):
         approach()  # Re-detect and align after every reset; never blindly re-grab.
         heartbeat.set('grasping')
         print('[grasp attempt]', attempt, '/', config['grasp_attempts'])
+        view = getattr(motion, 'debug_view', None)
+        if view:
+            view.update('Grasp attempt %d/%d' % (attempt, config['grasp_attempts']))
         motion.action('grab')
         motion.wait(config['settle_seconds'])
         heartbeat.set('verifying_grasp')
@@ -349,10 +369,8 @@ def approach_object(config, motion, camera, heartbeat, debug=False, simulate=Fal
         last = stamp
         observation, mask = detect(frame, config['vision'])
         decision = planner.decide(observation)
-        if debug:
-            camera.cv2.imshow('blue object mask', mask)
-            if camera.cv2.waitKey(1) & 0xff in (27, ord('q')):
-                raise Stopped('debug quit')
+        if getattr(motion, 'debug_view', None):
+            motion.debug_view.update('Decision=%s stable=%d/%d' % (decision, planner.ready, config['vision']['stable_frames']))
         if decision == 'grab':
             return
         if decision != 'wait':
@@ -368,14 +386,8 @@ def approach_object(config, motion, camera, heartbeat, debug=False, simulate=Fal
 
 def preview_vision(config, motion, camera, debug):
     last, printed = time.monotonic(), 0
-    latest, callback_ready = {'frame': None}, False
-    def pick_hsv(event, x, y, flags, unused):
-        if event == camera.cv2.EVENT_LBUTTONDOWN and latest['frame'] is not None:
-            image = latest['frame']
-            height, width = image.shape[:2]
-            hsv = camera.cv2.cvtColor(image, camera.cv2.COLOR_BGR2HSV)
-            print('[pixel HSV / normalized xy]', hsv[y, x].tolist(), [round(x / float(width), 3), round(y / float(height), 3)])
     while not motion.stop.is_set():
+        motion.check_safety()
         frame, stamp = camera.read_after(last)
         if frame is None:
             if time.monotonic() - last > config['camera_timeout']:
@@ -392,33 +404,9 @@ def preview_vision(config, motion, camera, debug):
                     blocked, occupancy, unknown = floor_obstacle(frame, guard, config['vision'],
                                                                  config['feedback'].get('held_roi'), 'forward')
                     print('[camera corridor blocked / occupancy]', blocked, round(occupancy, 3))
-                    if debug:
-                        camera.cv2.imshow('non-floor mask', unknown)
                 except RuntimeError as exc:
                     print('[camera corridor]', exc)
             printed = stamp
-        if debug:
-            camera.cv2.imshow('blue object mask', mask)
-            display = frame.copy()
-            latest['frame'] = frame
-            height, width = frame.shape[:2]
-            for key, color in (('held_roi', (0, 255, 0)), ('placed_roi', (0, 255, 255))):
-                roi = config['feedback'].get(key)
-                if isinstance(roi, list) and len(roi) == 4:
-                    x0, y0, x1, y1 = roi
-                    camera.cv2.rectangle(display, (int(x0 * width), int(y0 * height)),
-                                         (int(x1 * width), int(y1 * height)), color, 2)
-            roi = config['obstacle_guard'].get('roi')
-            if isinstance(roi, list) and len(roi) == 4:
-                x0, y0, x1, y1 = roi
-                camera.cv2.rectangle(display, (int(x0 * width), int(y0 * height)),
-                                     (int(x1 * width), int(y1 * height)), (0, 0, 255), 2)
-            camera.cv2.imshow('camera and feedback ROIs', display)
-            if not callback_ready:
-                camera.cv2.setMouseCallback('camera and feedback ROIs', pick_hsv)
-                callback_ready = True
-            if camera.cv2.waitKey(1) & 0xff in (27, ord('q')):
-                return
 
 
 def main():
@@ -468,7 +456,10 @@ def main():
     try:
         if not args.simulate:
             camera = Camera(config['camera'], stop)
+            if args.debug:
+                motion.debug_view = DebugView(camera, config, heartbeat, motion, detect_details, Stopped)
         if args.vision_only:
+            heartbeat.set('vision_preview')
             preview_vision(config, motion, camera, args.debug)
             return
         if args.execute and config['obstacle_guard'].get('mode') == 'vision':
@@ -487,7 +478,8 @@ def main():
         if args.execute:
             print('Route done; keep this process running until all followers stop. Ctrl+C exits.')
             while not stop.wait(0.2):
-                pass
+                if getattr(motion, 'debug_view', None):
+                    motion.debug_view.poll()
     except Stopped as exc:
         motion.halt()
         heartbeat.set('stopped')
