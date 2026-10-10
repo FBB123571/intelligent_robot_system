@@ -41,6 +41,7 @@ class HumanoidTests(unittest.TestCase):
         motion.hold_values = {6: 574, 7: 921, 8: 477, 14: 392, 15: 79, 16: 596}
         motion.action('forward')
         actual = dict(motion.controller.sent)
+        self.assertEqual(len(actual), 16)
         for servo, pulse in motion.hold_values.items():
             self.assertEqual(actual[servo], pulse)
         self.assertEqual(actual[1], 500)

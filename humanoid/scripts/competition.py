@@ -130,7 +130,10 @@ class Motion(object):
                 raise Stopped('stop requested')
             if kind in ('forward', 'left', 'right'):
                 check_hold(self.config)
-            for servo, pulse in enumerate(frame[2:], 1):
+            # Official TonyPi 1.20 diagram identifies 16 body bus servos.
+            # Some local d6a files also contain 17/18 columns; keep them in the
+            # parser but do not send commands to unverified extra bus channels.
+            for servo, pulse in enumerate(frame[2:18], 1):
                 if kind in ('forward', 'left', 'right'):
                     pulse = self.hold_values.get(servo, pulse)
                 if self.controller:
