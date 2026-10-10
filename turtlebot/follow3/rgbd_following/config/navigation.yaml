@@ -22,7 +22,8 @@ DWAPlannerROS:
   max_trans_vel: 0.12
   min_trans_vel: 0.015
   max_rot_vel: 0.4
-  min_rot_vel: 0.08
+  # Must be reachable from rest within acc_lim_theta / controller_frequency.
+  min_rot_vel: 0.03
   trans_stopped_vel: 0.015
   rot_stopped_vel: 0.03
   acc_lim_x: 0.3

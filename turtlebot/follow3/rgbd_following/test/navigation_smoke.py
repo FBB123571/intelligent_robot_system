@@ -67,7 +67,7 @@ class NavigationSmoke(unittest.TestCase):
             # not a recovery behavior: the controller still emits zero in idle.
             elapsed = wall-start
             if seen['dwa'] is not None:
-                for key,value in [('max_trans_vel',.12),('min_trans_vel',.015),('max_rot_vel',.4),('min_rot_vel',.08)]:
+                for key,value in [('max_trans_vel',.12),('min_trans_vel',.015),('max_rot_vel',.4),('min_rot_vel',.03)]:
                     self.assertIn(key,seen['dwa'])
                     self.assertAlmostEqual(seen['dwa'][key],value)
             if elapsed < 6.:
