@@ -26,9 +26,9 @@ class TaskTests(unittest.TestCase):
     def test_failed_grasp_resets_and_realigns_before_success(self):
         self.run_task([False, True, True, True, True, True])
         self.assertEqual(self.approach.call_count, 2)
-        kinds = [c.args[0] for c in self.motion.action.call_args_list]
+        kinds = [c[0][0] for c in self.motion.action.call_args_list]
         self.assertEqual(kinds, ['grab', 'retry_reset', 'grab', 'forward', 'release'])
-        states = [c.args[0] for c in self.heartbeat.set.call_args_list]
+        states = [c[0][0] for c in self.heartbeat.set.call_args_list]
         self.assertIn('grasp_success', states)
         self.assertEqual(states[-1], 'done')
 
@@ -36,12 +36,12 @@ class TaskTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'exhausted'):
             self.run_task([False, False, False])
         self.assertEqual(self.approach.call_count, 3)
-        self.assertNotIn('forward', [c.args[0] for c in self.motion.action.call_args_list])
+        self.assertNotIn('forward', [c[0][0] for c in self.motion.action.call_args_list])
 
     def test_missing_grasp_feedback_does_not_trigger_blind_retry(self):
         with self.assertRaises(self.feedback.FeedbackUnavailable):
             self.run_task([self.feedback.FeedbackUnavailable('camera lost')])
-        self.assertEqual([c.args[0] for c in self.motion.action.call_args_list], ['grab'])
+        self.assertEqual([c[0][0] for c in self.motion.action.call_args_list], ['grab'])
 
     def test_drop_placement_and_release_failure_do_not_mark_done(self):
         for results, release_expected in (([True, False], False),
@@ -52,9 +52,9 @@ class TaskTests(unittest.TestCase):
             self.heartbeat.reset_mock()
             with self.assertRaises(RuntimeError):
                 self.run_task(results)
-            kinds = [c.args[0] for c in self.motion.action.call_args_list]
+            kinds = [c[0][0] for c in self.motion.action.call_args_list]
             self.assertEqual('release' in kinds, release_expected)
-            self.assertNotIn('done', [c.args[0] for c in self.heartbeat.set.call_args_list])
+            self.assertNotIn('done', [c[0][0] for c in self.heartbeat.set.call_args_list])
 
     def test_distance_missing_near_nonfinite_and_stale_stop(self):
         import tempfile

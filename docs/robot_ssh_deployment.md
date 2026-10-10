@@ -16,6 +16,20 @@ SDK 路径：`/home/pi/TonyPi/HiwonderSDK/hiwonder`。实机官方 `ActionGroupC
 
 ## 独立部署与检查
 
+按团队要求，完整 Git 仓库现已同步到 `/home/pi/intelligent_robot_system` 根目录，分支为 `main`，远程为 `https://github.com/yky666/intelligent_robot_system.git`。保留之前的 `releases` 部署快照；根目录的 `runtime/competition.local.yaml` 指向根目录 `runtime/ActionGroups`，用于现场配置。`runtime` 和 `releases` 加入实机 `.git/info/exclude`，不参与提交，避免覆盖现场标定数据。
+
+日常从根目录运行：
+
+```bash
+cd /home/pi/intelligent_robot_system
+python3 humanoid/scripts/competition.py --config runtime/competition.local.yaml --check-actions
+python3 humanoid/scripts/competition.py --config runtime/competition.local.yaml --simulate
+# 在 VNC 桌面终端中预览摄像头
+python3 humanoid/scripts/competition.py --config runtime/competition.local.yaml --vision-only --debug
+```
+
+机器人能访问 GitHub 时，使用 `git pull --ff-only` 更新代码。只有机器人热点连接时，本次通过 PC 传输 Git bundle 完成同步，仓库仍保留完整 Git 历史；后续可继续由 PC 转发更新，无需让机器人直接上网。
+
 比赛代码部署到 `/home/pi/intelligent_robot_system/releases/<版本目录>`，动作文件放在版本目录的 `runtime/ActionGroups`，通过部署配置的 `action_dir` 指向该目录。保持 `/home/pi/TonyPi` 原有文件完整。抓取、直走、左转和接近动作优先采用实机已有文件；右转和反向抓取放置候选依然需要实测。
 
 本次版本目录为 `/home/pi/intelligent_robot_system/releases/20261010-legacy-preflight`，上传的 23 个文件逐个校验 SHA256。实机通过动作文件检查、完整状态机模拟和 12 项单元测试；本地全部 160 项单元测试通过。这些验证不代表实际抓取、步态、放置或摄像头标定已经完成。
