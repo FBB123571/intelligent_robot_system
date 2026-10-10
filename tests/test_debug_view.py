@@ -62,3 +62,20 @@ class DebugTests(unittest.TestCase):
         with self.assertRaises(self.stopped):
             motion.wait(.5)
         motion.debug_view.poll.assert_called_once()
+
+    def test_gtk_unsupported_visibility_keeps_display_open(self):
+        import time
+        from unittest.mock import Mock
+        camera, heartbeat, motion = Mock(), Mock(), Mock()
+        camera.read_after.return_value = self.np.zeros((240, 320, 3), dtype=self.np.uint8), time.monotonic()
+        camera.cv2.waitKey.return_value = -1
+        camera.cv2.getWindowProperty.return_value = -1
+        heartbeat.state = 'vision_preview'
+        motion.current_action = ''
+        view = self.view(camera, self.config, heartbeat, motion, self.details, self.stopped)
+        view.poll()
+        camera.cv2.imshow.assert_called()
+        view.last_poll = 0
+        camera.cv2.getWindowProperty.return_value = 0
+        with self.assertRaises(self.stopped):
+            view.poll()

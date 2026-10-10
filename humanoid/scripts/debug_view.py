@@ -96,5 +96,9 @@ class DebugView:
         if not self.callback_ready:
             cv2.setMouseCallback(self.WINDOW, self.click)
             self.callback_ready = True
-        if cv2.waitKey(1) & 0xff in (27, ord('q')) or cv2.getWindowProperty(self.WINDOW, cv2.WND_PROP_VISIBLE) < 1:
+        # GTK on the team's Pi returns -1 for unsupported WND_PROP_VISIBLE.
+        # That value does not mean the window was closed.
+        key = cv2.waitKey(1) & 0xff
+        visible = cv2.getWindowProperty(self.WINDOW, cv2.WND_PROP_VISIBLE)
+        if key in (27, ord('q')) or visible == 0:
             raise self.stop_exception('debug window stop requested')

@@ -54,4 +54,4 @@ python3 humanoid/scripts/competition.py --config runtime/competition.local.yaml 
 
 运行前检查摄像头占用。现场同时有官方 TonyPi 服务、Joystick、上位机和网页控制 worker 等进程；不得让多个程序同时发送舵机指令。正式比赛需要逐项完成动作验证、视觉 ROI 和路线标定，释放相机与串口的控制权，然后使用 `--execute --debug`。不能只把标定开关改成 true 就当成验证完成。
 
-实机还存在 `put_down.d6a`、`put_down2.d6a`、`put_up_object.d6a`；这些可以作为放置动作参考，但名称不能证明与当前抱物姿态兼容，尚未替换已生成的放置候选。
+实机还存在 `put_down.d6a`、`put_down2.d6a`、`put_up_object.d6a`。当前比赛配置已选择实机 `put_down`，并采用固定抓取手臂的组合转向候选，详见 [组合转向动作](carry_turn_composition.md)；实际抱物姿态与放置起始姿态的连接尚需现场验证。

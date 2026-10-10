@@ -54,25 +54,57 @@ def write_new(path, rows):
         conn.close()
 
 
+def compose_carry_turn(rows, grab_rows, entry_ms=600):
+    """Keep original leg trajectory/timing; hold arms at grab's final pose.
+
+    Extra unverified channels are stored at grab's final values, never executed.
+    An entry frame blends from the current pose to the turn's initial leg pose.
+    This remains an unvalidated loaded gait, not a guarantee of balance/yaw.
+    """
+    if not rows or not grab_rows or any(len(r) != len(grab_rows[-1]) for r in rows):
+        raise ValueError('Turn and grab must have matching channel counts')
+    if isinstance(entry_ms, bool) or not isinstance(entry_ms, int) or not 20 <= entry_ms <= 30000:
+        raise ValueError('entry_ms must be 20..30000')
+    last = grab_rows[-1]
+    held = [6, 7, 8, 14, 15, 16] + list(range(17, len(last) - 1))
+    output = []
+    for row in rows:
+        new = list(row)
+        for servo in held:
+            new[servo + 1] = last[servo + 1]
+        output.append(new)
+    entry = list(output[0])
+    entry[1] = entry_ms
+    output.insert(0, entry)
+    for index, row in enumerate(output, 1):
+        row[0] = index
+    return output
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output-dir', default=str(ROOT / 'humanoid/ActionGroup/candidates'))
     parser.add_argument('--source', help='mirror this existing d6a instead of generating default candidates')
+    parser.add_argument('--carry-pose', help='grab.d6a: compose source legs with its final arm pose instead of mirroring')
+    parser.add_argument('--entry-ms', type=int, default=600, help='composed turn entry transition duration')
     parser.add_argument('--output', help='new mirrored d6a path; never overwrites')
     parser.add_argument('--scope', choices=('legs', 'arms', 'body'), default='legs',
                         help='paired channels to mirror; default keeps carrying arms unchanged')
     args = parser.parse_args()
     if bool(args.source) != bool(args.output):
         parser.error('--source and --output must be supplied together')
+    if args.carry_pose and not args.source:
+        parser.error('--carry-pose requires --source and --output')
     if args.source:
-        rows = mirror_frames(action_frames(args.source), args.scope)
+        rows = (compose_carry_turn(action_frames(args.source), action_frames(args.carry_pose), args.entry_ms)
+                if args.carry_pose else mirror_frames(action_frames(args.source), args.scope))
         output = Path(args.output)
         output.parent.mkdir(parents=True, exist_ok=True)
         try:
             write_new(output, rows)
         except FileExistsError:
             parser.error('Output already exists; choose a new path: ' + str(output))
-        print('Generated UNVALIDATED mirror candidate:', output)
+        print('Generated UNVALIDATED %s candidate:' % ('composed carry turn' if args.carry_pose else 'mirror'), output)
         return
     out = Path(args.output_dir)
     out.mkdir(parents=True, exist_ok=True)

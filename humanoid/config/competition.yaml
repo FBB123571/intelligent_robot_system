@@ -29,9 +29,10 @@ actions:
   align_right: right_move
   grab: grab
   forward: grab_go_forward
-  left: grab_turn_left
-  right: grab_turn_right
-  release: grab_release
+  left: grab_turn_left_composed
+  right: grab_turn_right_composed
+  release: put_down
+  # Normal placement uses the robot's put_down. Failed-grasp reset is separate.
   # Candidate reverse-grab reset: validate against the actual failed-grasp pose.
   retry_reset: grab_release
 grasp_attempts: 3

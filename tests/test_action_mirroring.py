@@ -34,3 +34,19 @@ class MirrorTests(unittest.TestCase):
                 with self.assertRaises(FileExistsError):
                     self.tool.write_new(path, rows)
                 self.assertEqual(path.read_bytes(), before)
+
+    def test_composed_turn_preserves_leg_trajectory_timing_and_grasp(self):
+        grab = self.tool.action_frames(self.root / 'humanoid/ActionGroup/grab.d6a')
+        for side in ('left', 'right'):
+            source = self.tool.action_frames(self.root / ('humanoid/ActionGroup/reference/turn_%s.d6a' % side))
+            result = self.tool.compose_carry_turn(source, grab)
+            existing = self.tool.action_frames(self.root / ('humanoid/ActionGroup/candidates/grab_turn_%s_composed.d6a' % side))
+            self.assertEqual(result, [list(r) for r in existing])
+            self.assertEqual(result[0][1], 600)
+            for old, new in zip(source, result[1:]):
+                self.assertEqual(old[1], new[1])
+                for servo in list(range(1, 6)) + list(range(9, 14)):
+                    self.assertEqual(old[servo + 1], new[servo + 1])
+            for row in result:
+                for servo in (6, 7, 8, 14, 15, 16, 17, 18):
+                    self.assertEqual(row[servo + 1], grab[-1][servo + 1])
