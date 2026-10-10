@@ -12,6 +12,7 @@ TonyPi 识别并抱起物体，沿标定路线抱物行走、左转和右转，�
 | 人形机器人比赛入口 | [competition.py](humanoid/scripts/competition.py) |
 | 颜色、动作、步数、心跳配置 | [competition.yaml](humanoid/config/competition.yaml) |
 | 原始动作与候选动作说明 | [动作标定指南](humanoid/ActionGroup/README.md) |
+| 蓝色识别、重抓、防碰撞和放置确认 | [抓取与反馈指南](docs/grasp_safety_placement.md) |
 | 官方舵机映射、直接关节控制和动作解析 | [直接控制说明](docs/direct_joint_control.md) |
 | 建图避障 ROS 包 | [multi_robot_following](turtlebot/follow2/multi_robot_following) |
 | 多机网络、话题与 TF | [接口约定](docs/interfaces.md) |
@@ -69,17 +70,18 @@ python3 humanoid/scripts/competition.py --simulate
 
 Pi 上先确认 `python3 -c 'import cv2, numpy, yaml'` 成功。原装 SDK 的摄像头若不可用，配置 `camera: '0'` 或实际视频流 URL。`head.pan/tilt` 填 Pi 的舵机零位配置，随后固定头部进行距离标定。
 
-1. 在 LAB_Tool 标定目标颜色，把 OpenCV 的 0～255 LAB 下限/上限填入配置。
+1. 默认识别蓝色物块，先用 `--vision-only --debug` 标定 HSV 阈值和抓取条件；如用 LAB_Tool 则切换 LAB 模式并填 LAB 阈值。
 2. 分别验证 `grab`、抱物前进、抱物左转、抱物右转、放下；按[动作指南](humanoid/ActionGroup/README.md)处理候选动作。
 3. 测量一次抱物前进的距离、左右转角和脚掌摆动范围，调整 `route` 中的 `cycles`。这些次数不是米或角度。
 4. 将验证后的动作复制到 `/home/pi/TonyPi/ActionGroups/`，配置动作名；核对抓取位置和所有姿态衔接。
 5. 地图跟随联调时启用 `heartbeat.enabled`，将 `host` 填运行 ROS 心跳桥的电脑 IP。确认桥的 `sender_ip` 是 Pi IP、`session` 一致。
-6. 完成实机验证后设置 `hardware_calibrated: true`。
+6. 按[反馈指南](docs/grasp_safety_placement.md)标定持物/放置 ROI、接入实时测距并验证重抓复位。默认终点放置许可由操作员或外部适配器发出。
+7. 完成实机验证后设置 `hardware_calibrated: true`。
 
 仅查看视觉和打印动作，不发舵机命令：
 
 ```bash
-python3 humanoid/scripts/competition.py --debug
+python3 humanoid/scripts/competition.py --vision-only --debug
 ```
 
 无硬件模式不会向 ROS 发比赛启动心跳。实机执行：
