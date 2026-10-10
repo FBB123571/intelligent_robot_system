@@ -21,3 +21,4 @@ class OpenLoopTests(unittest.TestCase):
         self.assertEqual(shared['hold_arm_servos'], [])
         self.assertFalse(shared['obstacle_guard']['enabled'])
         self.assertEqual(shared['actions']['left'], '/home/pi/tonypi_web_control/actions/left')
+        self.assertEqual(shared['actions']['grab'], '/home/pi/tonypi_web_control/actions/grab')

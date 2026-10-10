@@ -1,7 +1,7 @@
 # Exact action files requested by the team. No camera/feedback/arm overrides.
 hardware_backend: legacy
 actions:
-  grab: /home/pi/TonyPi/ActionGroups/grab.d6a
+  grab: /home/pi/tonypi_web_control/actions/grab.d6a
   forward: /home/pi/TonyPi/ActionGroups/grab_go_forward.d6a
   left: /home/pi/tonypi_web_control/actions/left.d6a
   right: /home/pi/tonypi_web_control/actions/right.d6a
