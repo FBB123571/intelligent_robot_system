@@ -13,12 +13,12 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def plan(config):
     steps = config['steps']
-    if not steps or steps[0]['kind'] != 'grab' or steps[-1]['kind'] != 'release':
-        raise ValueError('Sequence must start with grab and end with release')
+    if not steps or steps[0]['kind'] != 'stand' or steps[-1]['kind'] != 'release':
+        raise ValueError('Sequence must start with stand and end with release')
     output = []
     for step in steps:
         kind, cycles = step['kind'], step['cycles']
-        if kind not in ('grab', 'forward', 'left', 'right', 'release'):
+        if kind not in ('stand', 'grab', 'forward', 'left', 'right', 'release'):
             raise ValueError('Unknown action kind: ' + str(kind))
         if isinstance(cycles, bool) or not isinstance(cycles, int) or cycles < 1:
             raise ValueError('cycles must be a positive integer')
@@ -33,6 +33,8 @@ def motion_config(config):
     # Motion's shared loader uses names without the .d6a extension.
     actions = {kind: str(PurePosixPath(path).with_suffix('')) for kind, path in config['actions'].items()}
     actions.update(approach=actions['grab'], align_left=actions['grab'], align_right=actions['grab'])
+    # Include the initial stand in the shared executor's preflight file loading.
+    actions['retry_reset'] = actions['stand']
     return {'actions': actions, 'action_dir': '/', 'hardware_backend': config['hardware_backend'],
             'route': [s for s in config['steps'] if s['kind'] in ('forward', 'left', 'right')],
             'obstacle_guard': {'enabled': False, 'mode': 'vision', 'poll_seconds': .05},
@@ -41,7 +43,8 @@ def motion_config(config):
 
 def run(sequence, motion):
     for index, kind in enumerate(sequence, 1):
-        state = 'grasping' if kind == 'grab' else ('releasing' if kind == 'release' else 'carrying')
+        state = ('initializing' if kind == 'stand' else
+                 ('grasping' if kind == 'grab' else ('releasing' if kind == 'release' else 'carrying')))
         print('[open-loop state]', state, 'step=%d/%d' % (index, len(sequence)), kind, flush=True)
         motion.action(kind)
     print('[open-loop state] done (sequence finished; grasp/release not verified)', flush=True)

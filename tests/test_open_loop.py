@@ -12,7 +12,7 @@ class OpenLoopTests(unittest.TestCase):
         sys.path.insert(0, str(root / 'humanoid/scripts'))
         import open_loop
         config = yaml.safe_load((root / 'humanoid/config/open_loop.yaml').read_text())
-        expected = ['grab'] + ['forward'] * 10 + ['left'] * 10 + ['forward'] * 10 + ['right'] * 10 + ['forward'] * 10 + ['release']
+        expected = ['stand', 'grab'] + ['forward'] * 10 + ['left'] * 10 + ['forward'] * 10 + ['right'] * 10 + ['forward'] * 10 + ['release']
         self.assertEqual(open_loop.plan(config), expected)
         motion = Mock()
         open_loop.run(expected, motion)
@@ -22,3 +22,4 @@ class OpenLoopTests(unittest.TestCase):
         self.assertFalse(shared['obstacle_guard']['enabled'])
         self.assertEqual(shared['actions']['left'], '/home/pi/tonypi_web_control/actions/left')
         self.assertEqual(shared['actions']['grab'], '/home/pi/tonypi_web_control/actions/grab')
+        self.assertEqual(shared['actions']['retry_reset'], shared['actions']['stand'])
