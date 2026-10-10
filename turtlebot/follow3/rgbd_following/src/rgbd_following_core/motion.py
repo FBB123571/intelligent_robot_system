@@ -7,6 +7,22 @@ def fresh(stamp, now, timeout):
     return stamp is not None and finite(stamp) and 0 <= now - stamp <= timeout
 
 
+def stopping_clear(grid, pose, measured_speed, requested_speed, radius, braking, reaction):
+    """All-direction stopping envelope, including inertia after a zero command.
+
+    Assumes speed cannot rise above max(measured, requested) during reaction and
+    measured braking is a conservative lower bound. Does not assume curvature
+    stays constant as angular and linear velocities decay independently.
+    """
+    if not all(finite(x) for x in (measured_speed, requested_speed, radius, braking, reaction)):
+        return False
+    if min(measured_speed, requested_speed, reaction) < 0 or braking <= 0:
+        return False
+    speed = max(measured_speed, requested_speed)
+    reach = speed*reaction + speed*speed/(2*braking)
+    return grid.clear(pose[0], pose[1], radius+reach)
+
+
 def yaw(q):
     return math.atan2(2 * (q.w * q.z + q.x * q.y), 1 - 2 * (q.y * q.y + q.z * q.z))
 

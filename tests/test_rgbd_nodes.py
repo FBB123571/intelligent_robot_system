@@ -53,9 +53,9 @@ class NodeTests(unittest.TestCase):
             'geometry_msgs': mod('geometry_msgs'),
             'geometry_msgs.msg': mod('geometry_msgs.msg', Twist=self.twist, PoseStamped=self.pose),
             'nav_msgs': mod('nav_msgs'),
-            'nav_msgs.msg': mod('nav_msgs.msg', OccupancyGrid=object),
+            'nav_msgs.msg': mod('nav_msgs.msg', OccupancyGrid=object, Odometry=object),
             'sensor_msgs': mod('sensor_msgs'),
-            'sensor_msgs.msg': mod('sensor_msgs.msg', PointCloud2=object),
+            'sensor_msgs.msg': mod('sensor_msgs.msg', PointCloud2=object, CameraInfo=object),
             'std_msgs': mod('std_msgs'),
             'std_msgs.msg': mod('std_msgs.msg', Bool=bool, String=str),
             'move_base_msgs': mod('move_base_msgs'),
@@ -88,6 +88,9 @@ class NodeTests(unittest.TestCase):
         n.buffer.lookup_transform.return_value = self.NS(header=self.NS(stamp=self.Stamp(self.now)),
             transform=self.NS(translation=self.NS(x=1.5, y=2., z=0.), rotation=self.NS(x=0., y=0., z=0., w=1.)))
         n.estop = False
+        from rgbd_following_core.ros_helpers import OdometryState
+        n.odometry = OdometryState()
+        n.odometry.stamp, n.odometry.received = self.now, self.wall
         return n
 
     def follower(self):
@@ -103,6 +106,7 @@ class NodeTests(unittest.TestCase):
         n.goal, n.goal_time = None, 0.
         n.lost_since = n.failed = n.previous_pose = None
         n.finished = False
+        n.trail_interrupted = n.rebuilding_trail = False
         n.client, n.allowed, n.status = self.Mock(), self.Mock(), self.Mock()
         n.client.wait_for_server.return_value = True
         n.client.get_state.return_value = 1
@@ -117,6 +121,13 @@ class NodeTests(unittest.TestCase):
         n.cloud_stamp, n.cloud_received = self.now, self.wall
         n.allowed = n.target_valid = True
         n.pub = self.Mock()
+        n.observation, n.observation_stamp, n.observation_received = (3.,2.,.5), self.now, self.wall
+        n.camera = (250.,250.,160.,120.,320,240)
+        n.camera_stamp, n.camera_received, n.camera_frame = self.now, self.wall, 'camera_optical'
+        base_tf = n.buffer.lookup_transform.return_value
+        optical_tf = self.NS(header=self.NS(stamp=self.Stamp(0.)), transform=self.NS(
+            translation=self.NS(x=0.,y=.5,z=0.), rotation=self.NS(x=.5,y=-.5,z=.5,w=.5)))
+        n.buffer.lookup_transform.side_effect = lambda parent, *args: optical_tf if parent == 'camera_optical' else base_tf
         return n
 
     def test_navigation_receives_measured_trailing_goal(self):
@@ -162,6 +173,7 @@ class NodeTests(unittest.TestCase):
         self.assertFalse(n.finished)
         self.wall += 2.1
         n.target_received = n.valid_received = n.mission_received = n.grid_received = self.wall
+        n.odometry.received = self.wall
         n.step()
         self.assertTrue(n.finished)
         n.allowed.publish.assert_called_with(False)
@@ -185,10 +197,87 @@ class NodeTests(unittest.TestCase):
         self.assertEqual(n.failed, 'navigation_failed_reset_required')
         n.allowed.publish.assert_called_with(False)
 
+    def test_terminal_callback_latches_failure_even_after_goal_cancel(self):
+        n = self.follower()
+        n.goal = (2.,2.,0.)
+        n.on_valid(self.NS(data=False))
+        n.on_navigation_done(4, None)
+        n.valid = True
+        n.step()
+        self.assertEqual(n.failed, 'navigation_failed_reset_required')
+        n.client.send_goal.assert_not_called()
+
+    def test_reacquisition_does_not_bridge_unobserved_target_path(self):
+        n = self.follower()
+        n.on_valid(self.NS(data=False))
+        self.now += 2.
+        msg = self.pose()
+        msg.pose.position.x, msg.pose.position.y = 3.8,2.
+        n.on_target(msg)
+        self.assertIsNone(n.failed)
+        self.assertEqual(n.trail.points, [(3.8,2.)])
+        self.assertTrue(n.rebuilding_trail)
+
+    def test_gate_rejects_stale_odom_and_scales_turn_away_from_target(self):
+        n = self.gate()
+        n.odometry.received -= 1.
+        self.assertEqual(n.output().linear.x, 0.)
+        self.assertEqual(n.reason, 'odometry_missing_or_stale')
+        n = self.gate()
+        n.observation = (2.5,2.18,.5)
+        n.command.angular.z = -.4
+        out = n.output()
+        self.assertGreater(out.linear.x,0.)
+        self.assertLess(out.linear.x,.1)
+        self.assertAlmostEqual(out.angular.z/out.linear.x,-4.)
+
+    def test_camera_duplicate_and_stale_pose_do_not_refresh_gate(self):
+        n = self.gate()
+        n.observation_stamp -= 2.
+        self.assertEqual(n.output().linear.x,0.)
+        self.assertEqual(n.reason,'visibility_input_stale')
+
+    def test_measured_rotation_must_stop_before_visibility_boundary(self):
+        n = self.gate()
+        n.observation = (2.5,2.18,.5)
+        n.odometry.angular, n.odometry.yaw_rate = .7,-.7
+        n.command.angular.z = -.04
+        self.assertEqual(n.output().linear.x,0.)
+        self.assertEqual(n.reason,'measured_visibility_stopping_path_blocked')
+
+    def test_odometry_rejects_wrong_frame_duplicate_and_nonfinite_velocity(self):
+        from rgbd_following_core.ros_helpers import OdometryState
+        state = OdometryState()
+        msg = self.NS(header=self.NS(stamp=self.Stamp(self.now),frame_id='odom'),
+                      child_frame_id='base_footprint',twist=self.NS(twist=self.twist()))
+        msg.twist.twist.linear.x = .12
+        self.assertTrue(state.update(msg,'odom','base_footprint',self.now,self.wall,.3))
+        self.assertAlmostEqual(state.speed,.12)
+        self.assertFalse(state.update(msg,'odom','base_footprint',self.now,self.wall,.3))
+        self.assertFalse(state.valid(self.now,self.wall,.3))
+        msg.header.stamp = self.Stamp(self.now+.1)
+        msg.child_frame_id = 'other_robot'
+        self.assertFalse(state.update(msg,'odom','base_footprint',self.now+.1,self.wall,.3))
+        msg.child_frame_id = 'base_footprint'
+        msg.twist.twist.linear.x = float('nan')
+        self.assertFalse(state.update(msg,'odom','base_footprint',self.now+.1,self.wall,.3))
+
+    def test_follower_does_not_finish_while_odom_reports_motion(self):
+        n = self.follower()
+        n.mission = 'done'
+        n.buffer.lookup_transform.return_value.transform.translation.x = 2.
+        n.odometry.speed = .1
+        for unused in range(30):
+            self.wall += .1
+            n.target_received = n.valid_received = n.mission_received = n.grid_received = n.odometry.received = self.wall
+            n.step()
+        self.assertFalse(n.finished)
+
     def test_abort_is_not_erased_by_simultaneous_target_loss(self):
         n = self.follower()
-        n.goal, n.valid = (2., 2., 0.), False
+        n.goal = (2., 2., 0.)
         n.client.get_state.return_value = 4
+        n.on_valid(self.NS(data=False))
         n.step()
         self.assertEqual(n.failed, 'navigation_failed_reset_required')
 
@@ -253,7 +342,7 @@ class NodeTests(unittest.TestCase):
         n = self.gate()
         n.grid.data[40 * 100 + 30] = -1
         self.assertEqual(n.output().linear.x, 0.)
-        self.assertEqual(n.reason, 'swept_footprint_blocked')
+        self.assertEqual(n.reason, 'measured_stopping_envelope_blocked')
 
     def test_perception_callback_confirms_then_rejects_duplicate(self):
         import importlib.util

@@ -77,10 +77,10 @@ class TrajectoryTests(unittest.TestCase):
         end = Completion(hold=2.)
         poly = [[0, 0], [4, 0], [4, 4], [0, 4]]
         args = ((1., 1.), (1., 1.), .15, poly, .26)
-        self.assertFalse(end.ready('done', (2., 1.), 1., *args))
-        self.assertFalse(end.ready('done', (2.2, 1.), 2.9, *args))
-        self.assertFalse(end.ready('done', (2.2, 1.), 3., *args))
-        self.assertTrue(end.ready('done', (2.2, 1.), 5., *args))
+        self.assertFalse(end.ready('done', (2., 1.), 1., *(args+(True,))))
+        self.assertFalse(end.ready('done', (2.2, 1.), 2.9, *(args+(True,))))
+        self.assertFalse(end.ready('done', (2.2, 1.), 3., *(args+(True,))))
+        self.assertTrue(end.ready('done', (2.2, 1.), 5., *(args+(True,))))
         end.reset()
         self.assertFalse(end.ready('done', (2.2, 1.), 6., *args))
 

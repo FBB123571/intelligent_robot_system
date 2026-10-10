@@ -13,3 +13,4 @@ logs/
 *.local.yaml
 .env
 .tools/
+.ros-test-results/

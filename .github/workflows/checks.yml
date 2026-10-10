@@ -1,6 +1,20 @@
 name: offline checks
 on: [push, pull_request]
 jobs:
+  ros-kinetic-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build actual Kinetic package with archived distribution dependencies
+        run: docker build -f tools/ros-kinetic.Dockerfile -t rgbd-kinetic-check turtlebot/follow3/rgbd_following
+      - name: Exercise actual ROS transport, navigation, shadow output and loss stop
+        run: docker run --rm -v "$PWD/.ros-test-results:/ws/build/test_results" rgbd-kinetic-check
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kinetic-test-results
+          path: .ros-test-results
+          include-hidden-files: true
   python3:
     runs-on: ubuntu-latest
     steps:
@@ -32,3 +46,7 @@ jobs:
         run: >-
           docker run --rm -v "$PWD:/work" -w /work python:2.7.18-buster
           python -m unittest discover -s tests -p test_rgbd_control.py -v
+      - name: Test method 3 recovery, visibility and inertia with Python 2
+        run: >-
+          docker run --rm -v "$PWD:/work" -w /work python:2.7.18-buster
+          python -m unittest discover -s tests -p test_rgbd_optimizations.py -v

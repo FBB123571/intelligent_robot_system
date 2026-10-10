@@ -66,6 +66,46 @@ class VisionPipelineTests(unittest.TestCase):
         points = self.vision.cloud_points(d, (1., 1., 0., 0.), stride=1)
         self.np.testing.assert_allclose(points, [[0, 0, 1], [2, 2, 2]])
 
+    def test_multicolor_context_rejects_same_seed_color_distractor(self):
+        # Same green seed, same size and range; surrounding body color differs.
+        self.depth[60:180,100:220] = 1.2
+        self.rgb[60:90,100:220] = (0,0,220)
+        reference = self.detect()[0]['feature']
+        self.c['perception']['identity']['references'] = [reference]
+        self.assertTrue(self.detect()[0]['identity_verified'])
+        self.rgb[60:90,100:220] = (220,0,0)
+        self.c['perception']['identity']['max_distance'] = .15
+        self.assertEqual(self.detect(), [])
+
+    def test_multiple_enrolled_views_accept_changed_body_appearance(self):
+        first = self.detect()[0]['feature']
+        self.depth[60:180,100:220] = 1.2
+        self.rgb[60:90,100:220] = (0,0,220)
+        second = self.detect()[0]['feature']
+        self.c['perception']['identity']['references'] = [first,second]
+        self.assertTrue(self.detect()[0]['identity_verified'])
+
+    def test_enrollment_and_heldout_evaluation_preserve_calibration_boundary(self):
+        import importlib.util
+        import tempfile
+        spec = importlib.util.spec_from_file_location('enrollment_test',os.path.join(ROOT,'tools/enroll_rgbd_identity.py'))
+        tool = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(tool)
+        with tempfile.TemporaryDirectory() as directory:
+            self.cv2.imwrite(os.path.join(directory,'target.png'),self.rgb)
+            self.np.save(os.path.join(directory,'target.npy'),self.depth)
+            self.cv2.imwrite(os.path.join(directory,'empty.png'),self.np.zeros_like(self.rgb))
+            sample = dict(rgb='target.png',depth='target.npy',encoding='32FC1',camera=self.camera,
+                          roi=[120,80,80,80],label='front')
+            enrolled = tool.enroll(self.c,[sample],directory)
+            self.assertEqual(len(enrolled['perception']['identity']['references']),1)
+            self.assertFalse(enrolled['identity_calibrated'])
+            absent = dict(sample,rgb='empty.png',roi=None,label='absent')
+            report = tool.evaluate(enrolled,[sample,absent],directory)
+            self.assertEqual((report['true_positive'],report['false_positive'],report['false_negative']),(1,0,0))
+            with self.assertRaises(ValueError):
+                tool.enroll(self.c,[dict(sample,roi=[0,0,20,20])],directory)
+
     def test_metric_depth_and_optical_to_base_transform(self):
         d = self.vision.metric_depth(self.np.array([[1200]], dtype=self.np.uint16), '16UC1')
         self.assertAlmostEqual(float(d[0, 0]), 1.2, places=5)
@@ -81,6 +121,9 @@ class VisionPipelineTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.validate(self.c, execute=True)
         self.c['finish_polygon'] = [[0, 0], [2, 0], [2, 2], [0, 2]]
+        with self.assertRaises(ValueError):
+            self.validate(self.c, execute=True)
+        self.c['perception']['identity']['references'] = [self.detect()[0]['feature']]
         self.validate(self.c, execute=True)
 
     def test_unsafe_config_rejected(self):

@@ -20,7 +20,7 @@ def main():
         for path in (ROOT / directory).rglob('*.py'):
             ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
             count += 1
-    for path in (ROOT / 'turtlebot').rglob('*.launch'):
+    for path in list((ROOT / 'turtlebot').rglob('*.launch')) + list((ROOT / 'turtlebot').rglob('*.test')):
         ET.parse(str(path))
     for path in (ROOT / 'turtlebot').rglob('package.xml'):
         ET.parse(str(path))

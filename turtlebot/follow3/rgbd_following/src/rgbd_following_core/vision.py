@@ -2,6 +2,23 @@
 import cv2
 import numpy as np
 from .depth import finite, summarize
+from .appearance import match_reference
+
+
+def appearance_feature(hsv, depth, bbox, z, width_m, band):
+    # Include nearby colors at the same depth, not just the seed color contour.
+    x, y, w, h = bbox
+    x0, x1 = max(0, x-w//2), min(hsv.shape[1], x+w+w//2)
+    y0, y1 = max(0, y-h//2), min(hsv.shape[0], y+h+h//2)
+    histogram = []
+    for ya, yb in ((y0, (y0+y1)//2), ((y0+y1)//2, y1)):
+        for xa, xb in ((x0, (x0+x1)//2), ((x0+x1)//2, x1)):
+            d = depth[ya:yb, xa:xb]
+            mask = (np.isfinite(d) & (np.abs(d-z) <= band)).astype(np.uint8)
+            hist = cv2.calcHist([hsv[ya:yb, xa:xb]], [0, 1], mask, [12, 3], [0, 180, 0, 256]).ravel()
+            hist /= max(float(hist.sum()), 1.)
+            histogram.extend(float(v) for v in hist)
+    return dict(histogram=histogram, aspect=float(w)/h, width_m=float(width_m))
 
 
 def intrinsics(projection, width, height):
@@ -79,6 +96,14 @@ def detect(rgb, depth_m, camera, config):
             continue
         u, v = float(np.median(us)), float(np.median(vs))
         point = ((u - cx) * z / fx, (v - cy) * z / fy, z)
+        feature = appearance_feature(hsv, depth_m, (x0, y0, width, height), z,
+                                     physical_width, config['depth_cluster_band'])
+        identity = config['identity']
+        score = match_reference(feature, identity['references'], identity['shape_ratio'], identity['width_ratio'])
+        if identity['references'] and score > identity['max_distance']:
+            continue
         candidates.append(dict(point=point, bbox=(x0, y0, width, height), depth=z,
+                               feature=feature, identity_score=score,
+                               identity_verified=bool(identity['references']) and score <= identity['reacquire_distance'],
                                valid_ratio=summary['valid_ratio']))
     return candidates, mask

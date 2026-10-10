@@ -2,6 +2,10 @@
 
 ## 已进行的离线检查
 
+2026-10-09 方式三四项优化：多视角外观模板、强身份匹配下的有界重识别与断裂轨迹处理；相机投影视野约束；里程计实际速度制动包络、VoxelLayer；登记/独立样本评估、录包/隔离回放与人工结论配合的赛道报告。补上导航终态回调锁定和本车持续停稳判定。Windows Python 3.14.7 全项目 **112 项通过，无跳过**；46 个 Python 文件及 launch/test/package XML、配置语义检查通过。真实 Kinetic/Xenial 基础容器中 56 项核心测试：52 项通过，4 项 Python 3 报告加载测试明确跳过（已由 Windows 全量测试覆盖）；方式三节点及工具的 Python 2 语法解析通过。
+
+新增固定基础镜像摘要的 Kinetic Docker 构建和 ROS 导航冒烟测试。本次实际安装 navigation/cv_bridge 的尝试遇到 Ubuntu 旧软件源 502/超时，**完整 catkin/ROS 集成结果仍待确认**，不能将纯 Python 2 检查当作 ROS 联调通过。未连接 Kinect、底盘或进行真实赛道验收；模板默认仍为空，实机执行需真实模板与完整标定。视野约束仅做短时固定目标投影，VoxelLayer 也不能替代真实盲区检查。
+
 2026-10-09 方式三控制链路开发：在仓库独立 `.venv` 安装 PyYAML 6.0.3、NumPy 2.5.3、OpenCV headless 5.0.0.93，Python 3.14.7 下全项目 **88 项测试通过，无跳过**；其中方式三 56 项。38 个 Python 文件及 XML/YAML/动作结构与方式三配置语义检查通过。覆盖真实 OpenCV 合成图像检测、毫米/米换算、颜色歧义、连续关联、目标丢失与超时、光学坐标变换、停止路径碰撞、影子模式无底盘发布者、未标定拒绝执行、导航失败锁定、最终目标小位移以及整车进入终点。已编写 move_base 滚动 odom 地图与 DWA 配置，但没有运行真实 ROS/navigation，因此不能把核心和消息替身测试称为实际绕障测试。Kinetic 的旧版 OpenCV、Python 2、catkin 构建和整车性能仍待验证；CI 已增加纯核心 Python 2 测试但本次未执行远端 CI。
 
 2026-10-09 方式三开发复查：新增 RGB-D 诊断核心、ROS 回调替身测试、无设备合成数据入口。当前 Windows Python 3.14.7 上共发现 48 项测试，45 项通过，3 项原有视觉测试因缺少 OpenCV/NumPy 跳过；方式三新增 16 项全部通过。静态检查通过 26 个 Python 文件及 launch/package XML、YAML、动作文件。尚未在 ROS 虚拟机运行 catkin_make 或 demo.launch，也未验证 Kinect。下文“32 项全部通过”为此前记录，不能视为本次环境结果。新增 Python 2 核心检查已配置到 CI，本次未实际运行 CI。

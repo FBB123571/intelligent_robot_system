@@ -206,18 +206,110 @@ roslaunch rgbd_following follow.launch execute:=false robot_ns:=tb3 \
 
 ### 4 停车、绕障与终点的边界
 
-- 目标丢失立即撤销导航、关闭许可，原地多帧重新确认。长时间丢失后只在原目标附近重捕获，避免追上另一个物体；超 60 秒锁定故障，按裁判规则处理并重启。
+- 目标丢失立即撤销导航、关闭许可，原地多帧重新确认。强外观模板匹配支持在有上限的运动范围内重识别；无模板时仍只允许近距离关联。两个合理候选时停车，超 60 秒锁定故障。
 - ABORTED/REJECTED/LOST、目标大跳变或 odom 大跳变会锁定停车；没有自动旋转找目标/清图恢复。重新定位后重启清除旧轨迹。
 - 导航拒绝未知区域；门控检查车体扫过区域和停止距离。没有可用路径时停车，不能保证任意障碍布局都有绕行解。
-- Kinect 仍有视野、近距离和遮挡盲区。2D 点云投影不能保证所有高度的空间均被看见；地面清除射线、障碍高度阈值需实测，4 cm 以下障碍尤其要核查。若场地覆盖无法满足要求，补充传感器或调整布置，不能关掉未知区域检查来强行行走。
-- done 后还要确认目标停稳 2 秒、到达最终带间距的跟随点、整个圆形车体进入 finish_polygon 才 finished。`finish_zone_not_reached` 意味着当前队形停在终点区之外，需要修正终点布局/领车停车位置；不能把它当作完赛。
+- Kinect 仍有视野、近距离和遮挡盲区。VoxelLayer 保留高度占据并做三维射线清除，但投影给规划器的地图仍是二维，不能证明所有高度均已看见；4 cm 以下障碍需实测。若覆盖无法满足要求，补充传感器或调整布置，不能关掉未知区域检查来强行行走。
+- done 后必须同时满足目标停稳、到达跟随点、整车进入 finish_polygon、里程计线/角速度低于阈值，并持续 2 秒才 finished。到达之前不累计停稳时间。`finish_zone_not_reached` 表示需修正终点布局/领车停车位置，不能当作完赛。
 - ROS `/competition/estop` 接入门控，持续 true 会停车；它不控制 TonyPi。所有速度控制源必须统一，禁止其他节点绕过门控直接发底盘速度。
 
 与其他组联合验证遮挡、相互碰撞与终点容纳空间。单元测试或单车跑通都不能代替全队满分验收。
 
+## 四项优化的使用与验收
+
+### 1. 多视角身份模板与遮挡后恢复
+
+颜色轮廓作为候选种子；在种子周围同一深度的区域提取四分区 HSV 直方图，结合种子宽高比和米制宽度，与人工登记的多视角模板比较。这样能利用相邻的其他机身颜色，并支持多种侧身/抱物外观。模板不在线自学习，避免误识别后不断学习干扰物。它不是通用 TonyPi 分类器，外观相同的物体仍可能混淆。
+
+先录制真实注册 RGB-D（见下文），在已 source ROS 的仓库根目录执行：
+
+```bash
+python tools/extract_rgbd_samples.py /data/enrollment.bag --output /data/identity_samples
+# 编辑 manifest.json：每个 roi=[x,y,width,height] 框住唯一目标颜色种子，
+# label 标记 front/back/left/right/carrying 等真实视角。剔除遮挡不清的登记帧。
+python tools/enroll_rgbd_identity.py /data/identity_samples/manifest.json \
+  --config /data/color-calibrated.local.yaml --output /data/identity.local.yaml
+```
+
+登记程序会重新关闭三项标定开关；**实机执行还要求 references 非空**。用另一段不同光照、角度、同色干扰物的视频导出验证样本；没有 TonyPi 的帧将 `roi` 设为 `null`，有目标的帧填写实际 ROI。
+
+```bash
+python tools/enroll_rgbd_identity.py /data/heldout/manifest.json \
+  --config /data/identity.local.yaml --evaluate --output /data/identity-evaluation.json
+```
+
+报告候选层面的 precision/recall、误检数与歧义帧数；不能用登记帧冒充独立验证。若左右侧没有种子颜色，要补相应 HSV 色带和模板，或调整经裁判允许的特征布置。当前不做部分遮挡形状补全，严重遮挡时停车。
+
+强模板匹配的丢失恢复需默认连续 6 帧，搜索范围随失联时间按最大目标速度增长，上限 1.5 m；没有强匹配时不放宽原 0.45 m 门限。丢失期间不移动找目标。恢复后清空断裂的历史轨迹，先对实时目标生成带间距的导航点，经 move_base 和门控检查；不会把遮挡期间的未知运动用一条直线伪装成已观测轨迹。新轨迹长度足够后恢复沿轨迹跟随。
+
+### 2. 绕障时的局部视野约束
+
+门控订阅实时 CameraInfo、目标三维位置和相机安装 TF，预测候选速度下未来 1 秒的目标投影。默认保留画面四周 12% 余量；原速度不满足时，以相同比例缩小线/角速度为 0.6、0.3 倍，并重新检查碰撞。还检查实际里程计速度下的保守停止视野路径，不能假定车已瞬间降速。
+
+这是局部速度约束，不是能预测遮挡物或保证全局可见性的规划器。目标位置在短时预测中保持不变，快速横移仍可能丢失；边缘余量、相机倾角和预测时长必须实测。无可行候选、相机信息/目标/TF 过期时输出零，已丢失时不自动旋转。实机验收应观察左转、右转和绕障时的目标画面位置及 `gate_status`，避免反复停走。
+
+### 3. 实际速度制动与三维障碍清除
+
+follower 和 gate 均检查 odom 帧名、child_frame_id、时间戳、有限速度与新鲜度。默认 odom 超过 0.3 秒失效就停车。停止包络半径为：
+
+`车体半径 + max(实测速度,候选速度) × 反应时间 + max(实测速度,候选速度)² / (2 × 制动减速度)`
+
+采用全方向圆包络覆盖不同角/线减速度产生的曲率变化，因此在窄通道可能更保守。假设反应期间速度不超过上述上界、配置减速度不高于实际可保证的制动能力；需在实际地面、电量、载荷下测量。下发零速度也不代表已停稳。
+
+costmap 改用 ROS VoxelLayer，默认高度 -0.05～1.55 m、16 层、每层 0.1 m。地面射线按三维经过的体素清除，保留其他高度已标记的障碍。相机原点必须位于高度范围内。`unknown_threshold: 15` 只要求部分体素被观测就可将未占据列标为空闲，**不是整列全高度覆盖证明**；必须配合低障碍、侧方、近场和多车遮挡测试。不要通过缩车体半径或放开未知区域来解决卡住。
+
+### 4. 录包、隔离回放和完整赛道验收
+
+启动跟随节点后另开终端记录。输出目录应已存在，JSONL 不覆盖旧文件；实际执行时把 command_topic 改成实际底盘输入，默认记录影子速度。
+
+```bash
+roslaunch rgbd_following record.launch scenario:=left_right_turns \
+  output:=/data/left-right-01.jsonl bag_prefix:=/data/left-right-01 \
+  settings:=/data/identity.local.yaml
+```
+
+多车时显式传入本车的 odom/base 帧、相机、里程计、mission、estop 和命令话题参数。录包包含注册 RGB-D、CameraInfo、TF、odom、任务状态和诊断。原始 RGB-D 数据量较大，事先检查剩余磁盘。
+
+在没有硬件驱动的独立 ROS master 中回放：
+
+```bash
+# 终端一
+ROS_MASTER_URI=http://localhost:11321 roscore -p 11321
+# 终端二；启动后按空格开始，以真实时间速率回放
+ROS_MASTER_URI=http://localhost:11321 roslaunch rgbd_following replay.launch \
+  bag:=/data/left-right-01_XXXX.bag settings:=/data/identity.local.yaml
+```
+
+回放固定 `execute=false`，只重放传感器/TF/任务输入，不播放录包中的旧速度或旧识别结果。暂停触发壁钟看门狗是预期行为。此回放用已记录的本车运动评估感知与控制决策，不能证明新控制器驱动下的闭环路径；闭环和真实绕障仍需实机验收。
+
+每次试跑只对应一个 scenario：`left_right_turns`、`occlusion`、`same_color`、`crossing`、`obstacles`、`team_finish`。建议每类至少连续完成三次，并保存完整视频、日志及每次失败记录。人工核查零碰撞、身份正确、无干预、整车终点停稳；最后一类额外核查全队完赛。
+
+按试跑时间顺序整理 `trials.json`（每次独立记录一项，保留失败项，不可重复计入同一个日志；scenario_exercised 需视频/现场确认实际完成了该场景）：
+
+```json
+{"trials":[{"scenario":"left_right_turns","log":"left-right-01.jsonl",
+  "verdict":{"scenario_exercised":true,"collision_free":true,"correct_identity":true,
+    "no_intervention":true,"robot_stopped_in_finish":true}}]}
+```
+
+```bash
+python tools/evaluate_rgbd_trials.py /data/trials.json --repeats 3 --output /data/report.json
+```
+
+报告可见时间占比、重识别耗时、最长失联、欧氏距离误差 P95、地图估算最小间隙、传感器覆盖率、各场景成功率及末尾连续成功次数；每类最后连续三次通过才满足默认整套验收。曲线路径上的欧氏间距与沿轨迹间距不同；地图间隙不等于真实碰撞检测。缺少人工结论、未测得终点停车、日志断档或传感器证据不足均不能自动通过；报告不换算比赛分数。
+
+真实 Kinetic 集成检查可在有 Docker 的机器上执行：
+
+```bash
+docker build -f tools/ros-kinetic.Dockerfile -t rgbd-kinetic-check turtlebot/follow3/rgbd_following
+docker run --rm rgbd-kinetic-check
+```
+
+镜像固定 Kinetic/Xenial 基础镜像摘要并使用 ROS 最终快照依赖；执行 catkin 构建和真实 ROS/cv_bridge/TF/VoxelLayer/DWA 冒烟测试，使用合成 RGB-D 和简化运动学，检查影子导航与丢失停车。它不是 Gazebo 或完整赛道验证。
+
 ## 离线验证与技术依据
 
-当前 Windows 独立虚拟环境中全项目 88 项测试通过，无跳过，其中方式三 56 项；ROS/navigation 与硬件验收尚未完成，详见 [验证记录](../../docs/validation.md)。
+当前 Windows 独立虚拟环境中全项目 112 项测试通过，无跳过；Kinetic/Xenial 基础容器下 52 项核心测试通过，4 项仅适用于 Python 3 的报告测试跳过。完整 ROS/navigation 集成与硬件验收状态见 [验证记录](../../docs/validation.md)。
 
 ```bash
 python3 tools/validate_project.py

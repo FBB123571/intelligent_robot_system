@@ -8,7 +8,22 @@ target_timeout: 0.5
 mission_timeout: 1.0
 tf_timeout: 0.5
 grid_timeout: 1.0
+odom_timeout: 0.3
+stopped_linear: 0.015
+stopped_angular: 0.03
+visibility:
+  horizon: 1.0
+  margin: 0.12
+  camera_timeout: 1.0
 perception:
+  identity:
+    # Enroll actual front/back/side/carrying views with tools/enroll_rgbd_identity.py.
+    # Empty templates permit shadow diagnostics only; execution requires templates.
+    references: []
+    max_distance: 0.35
+    reacquire_distance: 0.22
+    shape_ratio: 2.0
+    width_ratio: 1.8
   hsv_bands:
     - lower: [35, 90, 60]
       upper: [85, 255, 255]
@@ -32,12 +47,15 @@ tracker:
   jitter: 0.12
   reacquire_radius: 0.45
   ambiguity_margin: 0.10
+  identity_reacquire_radius: 1.5
+  reacquire_confirmations: 6
 follow_distance: 1.0
 minimum_distance: 0.65
 footprint_radius: 0.26
 max_linear: 0.12
 max_angular: 0.4
 braking_acceleration: 0.3
+angular_braking_acceleration: 0.6
 reaction_time: 0.3
 finish_tolerance: 0.15
 finish_hold: 2.0

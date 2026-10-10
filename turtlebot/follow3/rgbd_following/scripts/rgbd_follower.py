@@ -8,13 +8,13 @@ import actionlib
 import rospy
 import tf2_ros
 from geometry_msgs.msg import PoseStamped
-from nav_msgs.msg import OccupancyGrid
+from nav_msgs.msg import OccupancyGrid, Odometry
 from std_msgs.msg import Bool, String
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from rgbd_following_core.motion import fresh, need_goal
 from rgbd_following_core.settings import validate
 from rgbd_following_core.tracking import Trail, Completion, distance, circle_inside_polygon
-from rgbd_following_core.ros_helpers import same_frame, grid_message, transform_pose
+from rgbd_following_core.ros_helpers import same_frame, grid_message, transform_pose, OdometryState
 
 
 class Follower(object):
@@ -35,6 +35,9 @@ class Follower(object):
         self.failed = None
         self.finished = False
         self.previous_pose = None
+        self.odometry = OdometryState()
+        self.trail_interrupted = False
+        self.rebuilding_trail = False
         self.buffer = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.buffer)
         self.client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
@@ -45,6 +48,7 @@ class Follower(object):
                      rospy.Subscriber('move_base/global_costmap/costmap', OccupancyGrid, self.on_grid, queue_size=1),
                      rospy.Subscriber('mission', String, self.on_mission, queue_size=1),
                      rospy.Subscriber('estop', Bool, self.on_estop, queue_size=1)]
+        self.subs.append(rospy.Subscriber('odom', Odometry, self.on_odom, queue_size=1))
         rospy.on_shutdown(self.stop)
         self.timer = rospy.Timer(rospy.Duration(.1), self.tick)
 
@@ -56,6 +60,10 @@ class Follower(object):
                     (self.target_stamp is not None and stamp <= self.target_stamp)):
                 return
             point = (msg.pose.position.x, msg.pose.position.y)
+            if self.trail_interrupted or (self.target_stamp is not None and stamp-self.target_stamp > self.c['target_timeout']):
+                # No invented straight segment across an unobserved turn.
+                self.trail = Trail()
+                self.rebuilding_trail, self.trail_interrupted = True, False
             if not self.trail.add(point):
                 self.failed = 'target_jump_reset_required'
                 self.stop()
@@ -66,7 +74,12 @@ class Follower(object):
         with self.lock:
             self.valid, self.valid_received = msg.data, self.clock()
             if not self.valid:
+                self.trail_interrupted = self.target is not None
                 self.stop()
+
+    def on_odom(self, msg):
+        with self.lock:
+            self.odometry.update(msg, self.frame, self.base, rospy.Time.now().to_sec(), self.clock(), self.c['odom_timeout'])
 
     def on_grid(self, msg):
         with self.lock:
@@ -89,8 +102,16 @@ class Follower(object):
     def stop(self):
         self.allowed.publish(False)
         if self.goal is not None:
+            if self.client.get_state() in (4, 5, 9):
+                self.failed = 'navigation_failed_reset_required'
             self.client.cancel_goal()
             self.goal = None
+
+    def on_navigation_done(self, state, result):
+        with self.lock:
+            if state in (4, 5, 9):
+                self.failed = 'navigation_failed_reset_required'
+                self.allowed.publish(False)
 
     def block(self, reason, reset_finish=True):
         self.stop()
@@ -127,6 +148,8 @@ class Follower(object):
                 self.failed = 'target_lost_over_limit_reset_required'
             return self.block(self.failed or 'target_lost_hold_position')
         self.lost_since = None
+        if not self.odometry.valid(now, wall, c['odom_timeout']):
+            return self.block('odometry_missing_or_stale')
         if (self.grid is None or not fresh(self.grid_received, wall, c['grid_timeout']) or
                 not fresh(self.grid_stamp, now, c['grid_timeout'])):
             return self.block('costmap_missing_or_stale')
@@ -144,10 +167,21 @@ class Follower(object):
         if distance(robot, self.target) < c['minimum_distance']:
             return self.block('target_too_close')
         point = self.trail.behind(c['follow_distance'])
+        if point is not None:
+            self.rebuilding_trail = False
+        elif self.rebuilding_trail:
+            # After verified reacquisition use a live standoff goal, planned by
+            # move_base through observed free space, until enough new trail exists.
+            dx, dy = self.target[0]-robot[0], self.target[1]-robot[1]
+            length = math.hypot(dx, dy)
+            if length >= c['follow_distance']:
+                point = (self.target[0]-dx/length*c['follow_distance'],
+                         self.target[1]-dy/length*c['follow_distance'], math.atan2(dy, dx))
         if point is None:
             return self.block('waiting_for_target_trail')
         if self.completion.ready(self.mission, self.target, wall, robot, point,
-                                 c['finish_tolerance'], c['finish_polygon'], c['footprint_radius']):
+                                 c['finish_tolerance'], c['finish_polygon'], c['footprint_radius'],
+                                 self.odometry.speed <= c['stopped_linear'] and self.odometry.angular <= c['stopped_angular']):
             self.finished = True
             return self.block('finished')
         if not self.grid.clear(point[0], point[1], c['footprint_radius']):
@@ -166,7 +200,7 @@ class Follower(object):
             msg.target_pose.pose.position.x, msg.target_pose.pose.position.y = point[:2]
             msg.target_pose.pose.orientation.z = math.sin(point[2] / 2)
             msg.target_pose.pose.orientation.w = math.cos(point[2] / 2)
-            self.client.send_goal(msg)
+            self.client.send_goal(msg, done_cb=self.on_navigation_done)
             self.goal, self.goal_time = point, wall
         self.allowed.publish(True)
         self.status.publish('following')

@@ -4,9 +4,18 @@ transform_tolerance: 0.3
 track_unknown_space: true
 always_send_full_costmap: true
 plugins:
-  - {name: obstacles, type: 'costmap_2d::ObstacleLayer'}
+  - {name: obstacles, type: 'costmap_2d::VoxelLayer'}
   - {name: inflation, type: 'costmap_2d::InflationLayer'}
 obstacles:
+  # Retain occupied height bins: a ground ray must not erase a higher obstacle.
+  # These bounds MUST include the camera origin and all body-height obstacles.
+  origin_z: -0.05
+  z_resolution: 0.1
+  z_voxels: 16
+  max_obstacle_height: 1.5
+  mark_threshold: 0
+  unknown_threshold: 15
+  publish_voxel_map: true
   track_unknown_space: true
   observation_sources: depth floor
   # Body-height returns mark obstacles. Ground returns provide additional clearing

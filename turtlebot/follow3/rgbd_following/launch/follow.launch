@@ -37,6 +37,7 @@
       <param name="odom_frame" value="$(arg odom_frame)" />
       <param name="base_frame" value="$(arg base_frame)" />
       <remap from="mission" to="$(arg mission_topic)" />
+      <remap from="odom" to="$(arg odom_topic)" />
       <remap from="estop" to="$(arg estop_topic)" />
     </node>
     <node pkg="rgbd_following" type="rgbd_velocity_gate.py" name="rgbd_velocity_gate" output="screen" required="true">
@@ -45,6 +46,8 @@
       <param name="odom_frame" value="$(arg odom_frame)" />
       <param name="base_frame" value="$(arg base_frame)" />
       <remap from="cmd_vel_safe" to="$(arg cmd_vel_topic)" />
+      <remap from="odom" to="$(arg odom_topic)" />
+      <remap from="camera_info" to="$(arg info_topic)" />
       <remap from="estop" to="$(arg estop_topic)" />
     </node>
   </group>

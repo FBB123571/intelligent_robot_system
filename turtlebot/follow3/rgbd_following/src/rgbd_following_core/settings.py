@@ -1,6 +1,7 @@
 """Reject invalid configuration before hardware outputs are created."""
 from .depth import finite
 from .tracking import Tracker
+from .appearance import signature_distance
 
 
 def positive(config, keys):
@@ -14,7 +15,21 @@ def validate(config, execute=False):
     positive(config, ('sync_slop', 'target_timeout', 'mission_timeout', 'tf_timeout',
                       'grid_timeout', 'follow_distance', 'minimum_distance', 'footprint_radius',
                       'max_linear', 'max_angular', 'braking_acceleration', 'reaction_time',
-                      'finish_tolerance', 'finish_hold', 'finish_motion_tolerance', 'lost_failure_seconds'))
+                      'finish_tolerance', 'finish_hold', 'finish_motion_tolerance', 'lost_failure_seconds',
+                      'odom_timeout', 'stopped_linear', 'stopped_angular', 'angular_braking_acceleration'))
+    visibility = config['visibility']
+    positive(visibility, ('horizon', 'margin', 'camera_timeout'))
+    if not 0 < visibility['margin'] < .45 or visibility['horizon'] > 3:
+        raise ValueError('Invalid visibility horizon/margin')
+    identity = config['perception']['identity']
+    positive(identity, ('max_distance', 'reacquire_distance', 'shape_ratio', 'width_ratio'))
+    if not 0 < identity['reacquire_distance'] <= identity['max_distance'] < 1:
+        raise ValueError('Invalid appearance thresholds')
+    if min(identity['shape_ratio'], identity['width_ratio']) <= 1:
+        raise ValueError('Identity shape ratios must exceed one')
+    for ref in identity['references']:
+        positive(ref, ('aspect', 'width_m'))
+        signature_distance(ref['histogram'], ref['histogram'])
     if not config['follow_distance'] > config['minimum_distance'] > 2 * config['footprint_radius']:
         raise ValueError('Require follow_distance > minimum_distance > twice footprint radius')
     if config['sync_slop'] >= config['target_timeout']:
@@ -54,6 +69,8 @@ def validate(config, execute=False):
         if not (all(t > 0 for t in turns) or all(t < 0 for t in turns)):
             raise ValueError('Finish polygon must be convex, ordered and nondegenerate')
     if execute:
+        if not identity['references']:
+            raise ValueError('Hardware execution requires enrolled identity references')
         if not all(config[k] is True for k in ('hardware_calibrated', 'identity_calibrated', 'depth_coverage_calibrated')):
             raise ValueError('Record identity, footprint, braking and depth coverage calibration before execute')
         if not poly:

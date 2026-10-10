@@ -5,14 +5,15 @@ import threading
 import time
 import rospy
 import tf2_ros
-from geometry_msgs.msg import Twist
-from nav_msgs.msg import OccupancyGrid
-from sensor_msgs.msg import PointCloud2
+from geometry_msgs.msg import Twist, PoseStamped
+from nav_msgs.msg import OccupancyGrid, Odometry
+from sensor_msgs.msg import PointCloud2, CameraInfo
 from std_msgs.msg import Bool, String
 from rgbd_following_core.depth import finite
-from rgbd_following_core.motion import fresh, swept_clear
+from rgbd_following_core.motion import fresh, swept_clear, stopping_clear
+from rgbd_following_core.visibility import visible_path
 from rgbd_following_core.settings import validate
-from rgbd_following_core.ros_helpers import grid_message, transform_pose
+from rgbd_following_core.ros_helpers import grid_message, transform_pose, same_frame, OdometryState
 
 
 class Gate(object):
@@ -28,6 +29,9 @@ class Gate(object):
         self.grid = None
         self.allowed = self.target_valid = self.estop = False
         self.reason = 'waiting'
+        self.odometry = OdometryState()
+        self.observation = self.observation_stamp = self.observation_received = None
+        self.camera = self.camera_stamp = self.camera_received = self.camera_frame = None
         self.buffer = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.buffer)
         # Shadow mode has no publisher on the base's navigation input.
@@ -39,6 +43,9 @@ class Gate(object):
                      rospy.Subscriber('estop', Bool, self.on_estop, queue_size=1),
                      rospy.Subscriber('obstacle_cloud', PointCloud2, self.on_cloud, queue_size=1),
                      rospy.Subscriber('move_base/local_costmap/costmap', OccupancyGrid, self.on_grid, queue_size=1)]
+        self.subs.extend([rospy.Subscriber('odom', Odometry, self.on_odom, queue_size=1),
+                          rospy.Subscriber('target_pose', PoseStamped, self.on_pose, queue_size=1),
+                          rospy.Subscriber('camera_info', CameraInfo, self.on_camera, queue_size=1)])
         rospy.on_shutdown(lambda: self.pub.publish(Twist()))
         self.worker = threading.Thread(target=self.run)
         self.worker.daemon = True
@@ -47,6 +54,30 @@ class Gate(object):
     def on_command(self, msg):
         with self.lock:
             self.command, self.command_received = msg, self.clock()
+
+    def on_odom(self, msg):
+        with self.lock:
+            self.odometry.update(msg, self.frame, self.base, rospy.Time.now().to_sec(), self.clock(), self.c['odom_timeout'])
+
+    def on_pose(self, msg):
+        with self.lock:
+            stamp, p = msg.header.stamp.to_sec(), msg.pose.position
+            if (same_frame(msg.header.frame_id, self.frame) and all(finite(v) for v in (p.x,p.y,p.z)) and
+                    fresh(stamp, rospy.Time.now().to_sec(), self.c['target_timeout']) and
+                    (self.observation_stamp is None or stamp > self.observation_stamp)):
+                self.observation, self.observation_stamp, self.observation_received = (p.x,p.y,p.z), stamp, self.clock()
+
+    def on_camera(self, msg):
+        with self.lock:
+            stamp, p = msg.header.stamp.to_sec(), msg.P
+            if (len(p) == 12 and all(finite(v) for v in p) and min(p[0],p[5],msg.width,msg.height) > 0 and
+                    0 <= p[2] < msg.width and 0 <= p[6] < msg.height and abs(p[3])+abs(p[7]) < 1e-6 and
+                    msg.header.frame_id and fresh(stamp, rospy.Time.now().to_sec(), self.c['visibility']['camera_timeout']) and
+                    (self.camera_stamp is None or stamp > self.camera_stamp)):
+                self.camera = (p[0],p[5],p[2],p[6],msg.width,msg.height)
+                self.camera_stamp, self.camera_received, self.camera_frame = stamp, self.clock(), msg.header.frame_id
+            else:
+                self.camera_received = None
 
     def on_allowed(self, msg):
         with self.lock:
@@ -105,21 +136,58 @@ class Gate(object):
         # changing the collision-checked curvature produced by DWA.
         if v > c['max_linear'] + 1e-6 or abs(w) > c['max_angular'] + 1e-6:
             return zero
+        self.reason = 'odometry_missing_or_stale'
+        if not self.odometry.valid(now, wall, c['odom_timeout']):
+            return zero
+        self.reason = 'visibility_input_stale'
+        if (self.observation is None or self.camera is None or
+                not fresh(self.observation_stamp, now, c['target_timeout']) or
+                not fresh(self.observation_received, wall, c['target_timeout']) or
+                not fresh(self.camera_stamp, now, c['visibility']['camera_timeout']) or
+                not fresh(self.camera_received, wall, c['visibility']['camera_timeout'])):
+            return zero
         self.reason = 'base_tf_invalid'
         try:
             tf = self.buffer.lookup_transform(self.frame, self.base, rospy.Time(0), rospy.Duration(.02))
             if not fresh(tf.header.stamp.to_sec(), now, c['tf_timeout']):
                 return zero
             pose = transform_pose(tf)
+            optical = self.buffer.lookup_transform(self.camera_frame, self.base, rospy.Time(0), rospy.Duration(.02))
+            # Stamp zero is permitted only for a static camera extrinsic.
+            if optical.header.stamp.to_sec() != 0 and not fresh(optical.header.stamp.to_sec(), now, c['tf_timeout']):
+                return zero
+            t, q = optical.transform.translation, optical.transform.rotation
+            extrinsic = ((t.x,t.y,t.z), (q.x,q.y,q.z,q.w))
         except (ValueError, tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
             return zero
-        self.reason = 'swept_footprint_blocked'
-        if not swept_clear(self.grid, pose, v, w, c['footprint_radius'], c['braking_acceleration'], c['reaction_time']):
+        self.reason = 'measured_visibility_stopping_path_blocked'
+        measured_horizon = c['reaction_time'] + max(self.odometry.speed/c['braking_acceleration'],
+                                                   self.odometry.angular/c['angular_braking_acceleration'])
+        if (abs(self.odometry.lateral) > c['stopped_linear'] or
+                not visible_path(pose, self.observation, self.odometry.forward, self.odometry.yaw_rate,
+                                 self.camera, extrinsic, measured_horizon, c['visibility']['margin'])):
             return zero
-        self.reason = 'executing' if self.execute else 'shadow_velocity_only'
-        out = Twist()
-        out.linear.x, out.angular.z = v, w
-        return out
+        # Uniform scaling preserves curvature; every candidate is rechecked.
+        # A future camera pose is evaluated with the current observed target.
+        # This is a local visibility constraint, not an occlusion predictor.
+        for scale in (1., .6, .3):
+            vv, ww = v*scale, w*scale
+            self.reason = 'visibility_path_blocked'
+            if not visible_path(pose, self.observation, vv, ww, self.camera, extrinsic,
+                                c['visibility']['horizon'], c['visibility']['margin']):
+                continue
+            self.reason = 'measured_stopping_envelope_blocked'
+            if not stopping_clear(self.grid, pose, self.odometry.speed, vv, c['footprint_radius'],
+                                  c['braking_acceleration'], c['reaction_time']):
+                continue
+            self.reason = 'swept_footprint_blocked'
+            if not swept_clear(self.grid, pose, vv, ww, c['footprint_radius'], c['braking_acceleration'], c['reaction_time']):
+                continue
+            self.reason = ('executing' if self.execute else 'shadow_velocity_only') if scale == 1 else 'visibility_or_clearance_slowdown'
+            out = Twist()
+            out.linear.x, out.angular.z = vv, ww
+            return out
+        return zero
 
     def run(self):
         while not rospy.is_shutdown():

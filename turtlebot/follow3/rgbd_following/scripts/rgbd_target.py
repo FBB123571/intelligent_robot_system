@@ -76,7 +76,8 @@ class Target(object):
                 tf = self.buffer.lookup_transform(self.frame, depth.header.frame_id, depth.header.stamp, rospy.Duration(.05))
                 t, q = tf.transform.translation, tf.transform.rotation
                 positions = transform_points([c['point'] for c in candidates], (t.x, t.y, t.z), (q.x, q.y, q.z, q.w))
-                selected = self.tracker.update([tuple(v) for v in positions], stamps[1])
+                selected = self.tracker.update([tuple(v) for v in positions], stamps[1],
+                                               [c['identity_verified'] for c in candidates])
                 if not fresh(min(stamps), rospy.Time.now().to_sec(), cfg['target_timeout']):
                     return self.reject('processing_too_slow')
                 if selected is not None:
@@ -88,7 +89,8 @@ class Target(object):
                 self.valid.publish(selected is not None)
                 self.status.publish(String(data=json.dumps(dict(reason=self.tracker.reason,
                     target_valid=selected is not None, candidates=len(candidates), stamp=stamps[1],
-                    identity_calibrated=cfg['identity_calibrated']))))
+                    identity_calibrated=cfg['identity_calibrated'], reacquired=self.tracker.reacquired,
+                    identity_scores=[c['identity_score'] for c in candidates]))))
                 view = image.copy()
                 for candidate in candidates:
                     x, y, w, h = candidate['bbox']
