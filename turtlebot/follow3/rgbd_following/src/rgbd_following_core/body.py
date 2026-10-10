@@ -14,7 +14,10 @@ def floor_plane(points, valid, rows):
     samples = points[mask]
     if len(samples) < 100:
         return None
-    samples = samples[::max(1, len(samples) // 1000)]
+    step = max(1, len(samples) // 1000)
+    samples = samples[::step]
+    pixel_y, pixel_x = np.nonzero(mask)
+    pixel_y, pixel_x = pixel_y[::step], pixel_x[::step]
     rng = np.random.RandomState(7)
     triplets = samples[rng.randint(len(samples), size=(96, 3))]
     normals = np.cross(triplets[:, 1] - triplets[:, 0], triplets[:, 2] - triplets[:, 0])
@@ -30,15 +33,27 @@ def floor_plane(points, valid, rows):
     residuals = np.abs(np.sum(samples[:, None, :] * normals[None, :, :], axis=2) + offsets)
     support = residuals < .02
     best = int(np.argmax(support.sum(axis=0)))
-    if support[:, best].mean() < .45:
+    if support[:, best].mean() < .25:
         return None
-    inliers = samples[support[:, best]]
-    center = inliers.mean(axis=0)
-    normal = np.linalg.svd(inliers - center, full_matrices=False)[2][-1]
-    if normal[1] > 0:
-        normal = -normal
-    offset = -float(np.dot(normal, center))
+    accepted = support[:, best]
+    for unused in range(3):
+        inliers = samples[accepted]
+        center = inliers.mean(axis=0)
+        normal = np.linalg.svd(inliers - center, full_matrices=False)[2][-1]
+        if normal[1] > 0:
+            normal = -normal
+        offset = -float(np.dot(normal, center))
+        accepted = np.abs(np.sum(samples * normal, axis=1) + offset) < .02
+        if accepted.sum() < 100 or accepted.mean() < .25:
+            return None
     if normal[1] >= -.75 or not .15 < offset < 1.2:
+        return None
+    # Clutter may occupy most lower pixels. Instead of requiring a majority,
+    # demand distributed floor evidence across the image, close to its bottom,
+    # and at multiple depths. A small tabletop/obstacle patch is insufficient.
+    if (np.diff(np.percentile(pixel_x[accepted], [10, 90]))[0] < points.shape[1] * .35 or
+            np.percentile(pixel_y[accepted], 90) < points.shape[0] * .8 or
+            np.diff(np.percentile(samples[accepted, 2], [10, 90]))[0] < .20):
         return None
     return normal, offset
 

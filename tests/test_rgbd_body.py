@@ -85,6 +85,26 @@ class BodyTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate(self.config)
 
+    def test_floor_can_be_minority_with_distributed_support(self):
+        self.enroll()
+        rgb, depth = self.scene()
+        # Obstacles hide most central floor pixels, but actual floor remains
+        # visible on both sides and along the bottom at multiple depths.
+        depth[143:236, 60:260] = 1.5
+        rgb[143:236, 60:260] = (0, 0, 220)
+        depth[120:200, 136:184] = 1.
+        rgb[120:160, 136:184] = 230
+        rgb[160:200, 136:184] = 35
+        candidates = self.candidates(rgb, depth)
+        self.assertEqual(len(candidates), 1)
+        self.assertAlmostEqual(candidates[0]['depth'], 1.)
+
+    def test_narrow_floor_strip_is_not_enough_evidence(self):
+        rgb, depth = self.scene()
+        depth[:, :136] = np.nan
+        depth[:, 184:] = np.nan
+        self.assertEqual(self.candidates(rgb, depth), [])
+
 
 if __name__ == '__main__':
     unittest.main()
