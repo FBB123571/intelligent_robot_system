@@ -11,5 +11,6 @@ logs/
 *.avi
 *.mp4
 *.local.yaml
+*.local.csv
 .env
 .tools/

@@ -73,14 +73,31 @@ def main():
         result = [analyze(p) for p in args.paths]
     elif args.mode == 'fit':
         groups = {}
-        with open(args.csv, encoding='utf-8-sig', newline='') as stream:
-            for row in csv.DictReader(stream):
-                groups.setdefault(row['joint'], []).append(
-                    (float(row['position']), float(row['angle_deg'])))
+        if not Path(args.csv).is_file():
+            parser.error('找不到测量文件：%s。请复制 humanoid/config/measurements.template.csv '
+                         '到此路径，再填写实测数据。演示可使用 '
+                         'humanoid/config/measurements.demo.csv（非实测）。' % args.csv)
+        try:
+            with open(args.csv, encoding='utf-8-sig', newline='') as stream:
+                reader = csv.DictReader(stream)
+                if not {'joint', 'position', 'angle_deg'}.issubset(reader.fieldnames or []):
+                    parser.error('CSV 必须包含 joint,position,angle_deg 三列。')
+                for line, row in enumerate(reader, 2):
+                    joint = (row['joint'] or '').strip()
+                    if not joint:
+                        parser.error('CSV 第 %d 行缺少 joint。' % line)
+                    groups.setdefault(joint, []).append(
+                        (float(row['position']), float(row['angle_deg'])))
+        except (OSError, UnicodeError, ValueError, TypeError) as exc:
+            parser.error('无法读取测量数据：%s。position 和 angle_deg 必须填写数值。' % exc)
         if not groups:
-            parser.error('CSV contains no measurements')
-        result = {joint: fit(samples, args.degrees_per_unit)
-                  for joint, samples in groups.items()}
+            parser.error('CSV 目前只有表头，没有实测数据。请填写至少两个不同姿态的刻度和角度；'
+                         '演示可使用 humanoid/config/measurements.demo.csv（非实测）。')
+        try:
+            result = {joint: fit(samples, args.degrees_per_unit)
+                      for joint, samples in groups.items()}
+        except ValueError as exc:
+            parser.error('测量数据无法标定：%s' % exc)
     else:
         parser.error('choose actions or fit')
     print(json.dumps(result, ensure_ascii=False, indent=2))

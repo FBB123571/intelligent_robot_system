@@ -51,6 +51,15 @@ python tools/analyze_joint_mapping.py actions humanoid/ActionGroup/grab.d6a huma
 
 建立 UTF-8 CSV，列为 `joint,position,angle_deg`。以下仅是**数学演示数据，不是 TonyPi 实测值**：
 
+首次使用先复制空模板，再用文本编辑器或 Excel 填写实际测量值（保存为 UTF-8 CSV）。每个关节至少两行不同姿态，推荐三个以上；角度不能用刻度公式生成，否则不能提供独立标定信息。
+
+```powershell
+Copy-Item humanoid/config/measurements.template.csv measurements.local.csv
+notepad measurements.local.csv
+```
+
+如果 `measurements.local.csv` 已有测量记录，请直接打开编辑，不要再次复制覆盖。`*.local.csv` 已加入 Git 忽略规则。
+
 ```csv
 joint,position,angle_deg
 left_arm_elbow,420,24
@@ -63,5 +72,13 @@ python tools/analyze_joint_mapping.py fit measurements.local.csv
 ```
 
 此示例会得到 `zero=520, direction=-1`。工具固定标称 0.24°/刻度，分别拟合正负方向的零位，返回角度残差及另一方向的残差，便于评估。它不估计舵机增益、齿隙或非线性；若残差明显，先检查角度定义、测量、型号和安装，不能直接接受结果。方向残差接近时，应补充跨度更大的有效测量。
+
+演示数据已保存为独立文件，可直接验证工具运行：
+
+```powershell
+python tools/analyze_joint_mapping.py fit humanoid/config/measurements.demo.csv
+```
+
+演示输出不代表机器人实际标定结果，不可据此修改硬件配置。
 
 输出始终是候选参数，`hardware_verified=false`；不改写控制配置，不推断安全限位。确认后将 zero/direction 填入自己的 `joints.local.yaml`，另行实测 min/max，并完成原控制接口要求的硬件确认。项目公共配置保持未标定状态，避免把 500 的先验误当作完成实机标定。

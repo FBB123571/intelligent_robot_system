@@ -1,0 +1,4 @@
+joint,position,angle_deg
+left_arm_elbow,420,24
+left_arm_elbow,520,0
+left_arm_elbow,620,-24
