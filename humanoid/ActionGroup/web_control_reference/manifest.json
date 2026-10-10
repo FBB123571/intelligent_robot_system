@@ -1,0 +1,87 @@
+{
+  "source_host": "192.168.149.1",
+  "source_directory": "/home/pi/tonypi_web_control/actions",
+  "snapshot_date": "2026-10-10",
+  "files": [
+    {
+      "path": "backward.d6a",
+      "sha256": "e7ed88be1746d54faf82502df481bbc8937484d7c7ab84b904016f01232d0ec8",
+      "size": 8192,
+      "frames": 10,
+      "duration_ms": 4400,
+      "channels": 16
+    },
+    {
+      "path": "carry_forward.d6a",
+      "sha256": "5feffd907a8aad003a3333e374970bf5d1d858d76a7241e365a88fadbb58591a",
+      "size": 8192,
+      "frames": 12,
+      "duration_ms": 2565,
+      "channels": 16
+    },
+    {
+      "path": "carry_forward_left5.d6a",
+      "sha256": "0b09eaf7f08a1fac7d61ce0e8f50b42c3c5cf4e2d86099914b3a94c98227ca7d",
+      "size": 8192,
+      "frames": 12,
+      "duration_ms": 2565,
+      "channels": 16
+    },
+    {
+      "path": "carry_left.d6a",
+      "sha256": "3eef7e346a15f913bb3938004c47b230d3893361e8f390019ecaa39ce7a9cdd2",
+      "size": 8192,
+      "frames": 8,
+      "duration_ms": 2450,
+      "channels": 16
+    },
+    {
+      "path": "carry_right.d6a",
+      "sha256": "411ce5a37e00b81cc2754739950ef73474006ec364512dfce3b73286f0863a3d",
+      "size": 8192,
+      "frames": 8,
+      "duration_ms": 2550,
+      "channels": 16
+    },
+    {
+      "path": "forward.d6a",
+      "sha256": "f161b61a2ad634e82344b4d177382ac69fdc3ca828557889aba33bec97255a50",
+      "size": 8192,
+      "frames": 6,
+      "duration_ms": 1250,
+      "channels": 16
+    },
+    {
+      "path": "grab.d6a",
+      "sha256": "fd79be6187355bffd89d80b08b0d27bae39a24d73346bb554e4718f86095bb1a",
+      "size": 8192,
+      "frames": 6,
+      "duration_ms": 5400,
+      "channels": 16
+    },
+    {
+      "path": "left.d6a",
+      "sha256": "4b774843f2aeb9c9fa223934fdc507f4756573264aa5dccaf24c0dfdb0b77103",
+      "size": 8192,
+      "frames": 8,
+      "duration_ms": 2450,
+      "channels": 16
+    },
+    {
+      "path": "release.d6a",
+      "sha256": "d5df628050a41ac6aef2b8f4990c29251e025d061a6ccae14f93aed73ead2770",
+      "size": 8192,
+      "frames": 7,
+      "duration_ms": 5850,
+      "channels": 16
+    },
+    {
+      "path": "right.d6a",
+      "sha256": "325bb417afc67a41a5b25c01d79a56ffbfcd62fea809852670e3c8c45871c2ef",
+      "size": 8192,
+      "frames": 8,
+      "duration_ms": 2550,
+      "channels": 16
+    }
+  ]
+}

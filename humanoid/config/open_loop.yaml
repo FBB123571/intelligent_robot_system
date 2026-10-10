@@ -6,7 +6,7 @@ actions:
   forward: /home/pi/TonyPi/ActionGroups/grab_go_forward.d6a
   left: /home/pi/tonypi_web_control/actions/carry_left.d6a
   right: /home/pi/tonypi_web_control/actions/carry_right.d6a
-  release: /home/pi/tonypi_web_control/actions/release_legacy.d6a
+  release: /home/pi/tonypi_web_control/actions/release.d6a
 steps:
   - {kind: stand, cycles: 1}
   - {kind: grab, cycles: 1}

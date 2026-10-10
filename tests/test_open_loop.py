@@ -24,3 +24,4 @@ class OpenLoopTests(unittest.TestCase):
         self.assertEqual(shared['actions']['right'], '/home/pi/tonypi_web_control/actions/carry_right')
         self.assertEqual(shared['actions']['grab'], '/home/pi/tonypi_web_control/actions/grab')
         self.assertEqual(shared['actions']['retry_reset'], shared['actions']['stand'])
+        self.assertEqual(shared['actions']['release'], '/home/pi/tonypi_web_control/actions/release')
