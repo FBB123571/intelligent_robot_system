@@ -38,6 +38,16 @@ class JointTests(unittest.TestCase):
         c.move_joint_group({'a': 600, 'b': 400}, 1000)
         board.bus_servo_set_position.assert_called_once_with(1., [[6, 600], [14, 400]])
 
+    def test_legacy_board_uses_milliseconds_and_no_controller_packet(self):
+        from unittest.mock import Mock, call
+        board = Mock()
+        config = dict(self.config, hardware_backend='legacy')
+        c = self.klass(config, execute=True, board=board)
+        c.move_joint_group({'a': 600, 'b': 400}, 1000)
+        self.assertEqual(board.setBusServoPulse.call_args_list,
+                         [call(6, 600, 1000), call(14, 400, 1000)])
+        board.bus_servo_set_position.assert_not_called()
+
     def test_unverified_limits_and_invalid_values_block_execution(self):
         import copy
         bad = copy.deepcopy(self.config)

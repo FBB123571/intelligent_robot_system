@@ -1,5 +1,8 @@
 # Example only. Calibrate with the actual object, camera tilt and field.
 hardware_calibrated: false
+# Select legacy for the inspected 192.168.149.1 robot (official Board, 115200 baud).
+# auto only checks module availability; it cannot identify the physical controller.
+hardware_backend: legacy
 action_dir: /home/pi/TonyPi/ActionGroups
 camera: auto
 camera_timeout: 2.0

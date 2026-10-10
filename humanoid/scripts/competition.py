@@ -94,18 +94,26 @@ class Motion(object):
             if execute:
                 self.frames[name] = action_frames(Path(config['action_dir']) / (name + '.d6a'))
         self.controller = self.old_board = None
+        backend = config.get('hardware_backend', 'auto')
+        if backend not in ('auto', 'legacy', 'controller'):
+            raise ValueError('hardware_backend must be auto, legacy or controller')
         if execute:
             for directory in ('/home/pi/TonyPi', '/home/pi/TonyPi/HiwonderSDK',
                               '/home/pi/TonyPi/HiwonderSDK/build/lib'):
                 sys.path.insert(0, directory)
             # Only import hardware drivers after all preflight checks succeed.
-            try:
-                sdk = importlib.import_module('hiwonder.ros_robot_controller_sdk')
-                controller = importlib.import_module('hiwonder.Controller')
-            except ImportError:
+            if backend == 'legacy':
                 self.old_board = importlib.import_module('hiwonder.Board')
             else:
-                self.controller = controller.Controller(sdk.Board())
+                try:
+                    sdk = importlib.import_module('hiwonder.ros_robot_controller_sdk')
+                    controller = importlib.import_module('hiwonder.Controller')
+                except ImportError:
+                    if backend == 'controller':
+                        raise
+                    self.old_board = importlib.import_module('hiwonder.Board')
+                else:
+                    self.controller = controller.Controller(sdk.Board())
 
     def check_safety(self):
         if self.stop.is_set():

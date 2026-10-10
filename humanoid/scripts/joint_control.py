@@ -30,6 +30,9 @@ class JointControl(object):
         self.config = config
         self.execute = execute
         self.board = board
+        self.backend = config.get('hardware_backend', 'controller')
+        if self.backend not in ('legacy', 'controller'):
+            raise ValueError('hardware_backend must be legacy or controller')
         self.scale = number(config['degrees_per_unit'], 'degrees_per_unit')
         if self.scale <= 0:
             raise ValueError('degrees_per_unit must be positive')
@@ -81,8 +84,11 @@ class JointControl(object):
         if self.board is None:
             for path in ('/home/pi/TonyPi', '/home/pi/TonyPi/HiwonderSDK', '/home/pi/TonyPi/HiwonderSDK/build/lib'):
                 sys.path.insert(0, path)
-            sdk = importlib.import_module('hiwonder.ros_robot_controller_sdk')
-            self.board = sdk.Board()
+            if self.backend == 'legacy':
+                self.board = importlib.import_module('hiwonder.Board')
+            else:
+                sdk = importlib.import_module('hiwonder.ros_robot_controller_sdk')
+                self.board = sdk.Board()
         return self.board
 
     def move_joint_group(self, positions, duration_ms):
@@ -100,7 +106,12 @@ class JointControl(object):
         targets.sort()
         command = {'duration_ms': int(duration), 'positions': targets, 'execute': self.execute}
         if self.execute:
-            self.connect().bus_servo_set_position(duration / 1000.0, targets)
+            board = self.connect()
+            if self.backend == 'legacy':
+                for servo, pulse in targets:
+                    board.setBusServoPulse(servo, pulse, int(duration))
+            else:
+                board.bus_servo_set_position(duration / 1000.0, targets)
         return command
 
     def set_joint_angle(self, name, angle_deg, duration_ms):

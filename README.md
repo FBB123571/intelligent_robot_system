@@ -18,6 +18,7 @@ TonyPi 识别并抱起物体，沿标定路线抱物行走、左转和右转，�
 | 原始动作与候选动作说明 | [动作标定指南](humanoid/ActionGroup/README.md) |
 | 蓝色识别、重抓、防碰撞和放置确认 | [抓取与反馈指南](docs/grasp_safety_placement.md) |
 | 比赛摄像头窗口、识别框及状态调试 | [可视化调试指南](docs/humanoid_debug.md) |
+| TonyPi SSH、实机 SDK 与独立部署 | [实机部署说明](docs/robot_ssh_deployment.md) |
 | 官方舵机映射、直接关节控制和动作解析 | [直接控制说明](docs/direct_joint_control.md) |
 | 建图避障 ROS 包 | [multi_robot_following](turtlebot/follow2/multi_robot_following) |
 | 多机网络、话题与 TF | [接口约定](docs/interfaces.md) |

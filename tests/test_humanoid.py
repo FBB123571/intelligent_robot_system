@@ -16,6 +16,18 @@ class HumanoidTests(unittest.TestCase):
         for path in (self.root / 'humanoid/ActionGroup').rglob('*.d6a'):
             self.assertTrue(self.module.action_frames(path))
 
+    def test_legacy_backend_never_imports_controller(self):
+        import threading
+        from unittest.mock import Mock, patch
+        config = {'actions': {}, 'obstacle_guard': {}, 'hardware_backend': 'legacy'}
+        board = Mock()
+        with patch.object(self.module, 'validate_route', return_value=[]), \
+                patch.object(self.module.importlib, 'import_module', return_value=board) as load:
+            motion = self.module.Motion(config, threading.Event(), True)
+        load.assert_called_once_with('hiwonder.Board')
+        self.assertIs(motion.old_board, board)
+        self.assertIsNone(motion.controller)
+
     def test_stop_sends_no_additional_servo_commands(self):
         import threading
         motion = self.module.Motion.__new__(self.module.Motion)

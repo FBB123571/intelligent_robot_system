@@ -2,6 +2,8 @@
 # left/right are the ROBOT's own sides; axis names below describe placement only.
 # Verify wiring, sign, mechanical zero and allowed range on the actual machine.
 hardware_verified: false
+# Inspected team robot uses legacy Board.py on ttyAMA0 at 115200 baud.
+hardware_backend: legacy
 degrees_per_unit: 0.24
 joints:
   left_leg_foot:       {id: 1, zero: null, direction: null, min: null, max: null}

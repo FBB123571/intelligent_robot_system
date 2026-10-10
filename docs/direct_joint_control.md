@@ -63,7 +63,7 @@ command = control.move_joint_group({'left_arm_elbow': 574, 'right_arm_elbow': 39
 print(command)
 ```
 
-将 `humanoid/scripts` 加入 Python 模块路径或从该目录运行。硬件模式采用当前官方 `ros_robot_controller_sdk.Board`，仅在实际发送时初始化；老版本 Board API 未在此工具中适配。比赛程序中已有的旧板兼容路径不受此工具影响。
+将 `humanoid/scripts` 加入 Python 模块路径或从该目录运行。`hardware_backend: controller` 使用 `ros_robot_controller_sdk.Board`，以秒为时间单位，批量发送关节目标；`hardware_backend: legacy` 使用旧版 `hiwonder.Board.setBusServoPulse`，以毫秒为时间单位，逐个发送关节目标。两者均仅在实际发送时初始化。2026-10-10 检查的团队机器人官方动作程序采用旧版 Board（115200 波特率），本项目配置选择 legacy；不能仅因新版 SDK 文件存在而切换协议。旧版逐个发送不保证所有关节严格同时启动。
 
 ## 角速度控制的范围
 
