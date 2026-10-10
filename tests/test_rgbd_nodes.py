@@ -273,6 +273,19 @@ class NodeTests(unittest.TestCase):
             n.step()
         self.assertFalse(n.finished)
 
+    def test_reacquired_stationary_target_can_finish_within_gap_tolerance(self):
+        from rgbd_following_core.tracking import Trail
+        n = self.follower()
+        n.mission, n.rebuilding_trail = 'done', True
+        n.target, n.trail = (2.45,2.), Trail()
+        n.trail.add(n.target)
+        n.step()
+        self.assertFalse(n.finished)
+        self.wall += 2.1
+        n.target_received = n.valid_received = n.mission_received = n.grid_received = n.odometry.received = self.wall
+        n.step()
+        self.assertTrue(n.finished)
+
     def test_abort_is_not_erased_by_simultaneous_target_loss(self):
         n = self.follower()
         n.goal = (2., 2., 0.)

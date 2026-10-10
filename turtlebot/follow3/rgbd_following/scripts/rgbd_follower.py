@@ -177,6 +177,10 @@ class Follower(object):
             if length >= c['follow_distance']:
                 point = (self.target[0]-dx/length*c['follow_distance'],
                          self.target[1]-dy/length*c['follow_distance'], math.atan2(dy, dx))
+            elif self.mission == 'done' and length >= c['follow_distance']-c['finish_tolerance']:
+                # Already within the final gap tolerance: hold and measure stop;
+                # do not demand new leader motion or reverse after reacquisition.
+                point = (robot[0], robot[1], math.atan2(dy, dx))
         if point is None:
             return self.block('waiting_for_target_trail')
         if self.completion.ready(self.mission, self.target, wall, robot, point,
