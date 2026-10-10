@@ -212,4 +212,4 @@ python -m unittest discover -s tests -p test_core.py -v
 树莓派有图形调试窗口时用原有 OpenCV 或 `opencv-python`，不要用 headless 包替换它。GitHub Actions 检查代码、配置、候选动作结构、Python 2 核心兼容性和控制决策；不会证明真实避障、舵机稳定性或比赛成绩。
 
 
-关节零位与模型：见 [标定分析及离线拟合工具](docs/joint_calibration.md)，包含现有动作数据和 500 中位参考的适用范围。
+动作编辑与比赛调用采用 [500 中位镜像生成动作 → 状态机调用动作组](docs/action_mirroring.md)，无需测量 CSV。需要以后对齐真实几何坐标时，再参考 [标定分析及离线拟合工具](docs/joint_calibration.md)。

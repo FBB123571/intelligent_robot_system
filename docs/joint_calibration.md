@@ -1,5 +1,7 @@
 # TonyPi 关节坐标与标定
 
+当前项目仅为生成对称动作使用相对 500 中位坐标，按 [动作镜像工作流](action_mirroring.md) 操作即可，无需本页的测量 CSV。以下是对齐真实机械角度或模型时的可选标定流程。
+
 500 可以定义为**舵机中位参考零位**。官方编辑器明确将回中位置标为 500，并提供独立的舵机偏差设置。它是否也是“膝盖伸直为 0°”或某个 URDF 的 q=0，取决于舵盘安装、偏差和模型约定。
 
 来源：[官方动作编辑教程](https://docs.hiwonder.com/projects/TonyPi/en/latest/docs/9.upper_computer_action_editing_course.html)、[LX-824HV 规格](https://www.hiwonder.com/products/lx-824hv)。0..1000 对应标称 240°，先使用 0.24°/刻度；实际型号和装配仍需核实。下面所有分析离线运行，不调用硬件。
