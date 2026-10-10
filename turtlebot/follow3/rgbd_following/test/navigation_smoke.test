@@ -1,0 +1,11 @@
+<launch>
+  <include file="$(find rgbd_following)/launch/follow.launch">
+    <arg name="robot_ns" value="smoke" />
+    <arg name="execute" value="false" />
+    <arg name="rgb_topic" value="/smoke/input/rgb" />
+    <arg name="depth_topic" value="/smoke/input/depth" />
+    <arg name="info_topic" value="/smoke/input/info" />
+    <arg name="odom_topic" value="/smoke/input/odom" />
+  </include>
+  <test test-name="navigation_smoke" pkg="rgbd_following" type="navigation_smoke.py" time-limit="100" />
+</launch>

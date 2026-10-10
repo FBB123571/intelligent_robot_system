@@ -1,0 +1,6 @@
+__pycache__
+**/__pycache__
+*.pyc
+**/*.pyc
+*.local.yaml
+**/*.local.yaml

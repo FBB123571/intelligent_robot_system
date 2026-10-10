@@ -2,6 +2,20 @@
 
 ## 已进行的离线检查
 
+2026-10-10（虚拟机日期）方式三清障修复：拆分障碍标记与清障观测，清障保留量程内较远及车体高度之外的真实回波；无效深度仍不产生清障射线。Windows 全项目 **129 项测试通过、无跳过**，52 个 Python 文件及 XML/YAML 等结构检查通过。Ubuntu 16.04 / ROS Kinetic / Python 2.7 中 catkin 构建通过；独立 ROS master 的 `clearing_observations.test` 使用真实 VoxelLayer 验证远背景、高处端点、无效深度、前景遮挡、地面射线、同时标记/清障及空标记云替换旧缓存，共 1 个功能测试、7 类场景通过。原 `navigation_smoke.test` 导航和丢失停车也通过，未修改原通过条件。测试没有连接实车速度接口。
+
+现场 `obstacle_return_1791609527` 的深度和占用体素快照已用 `tools/replay_clearing_snapshot.py` 在另一独立 ROS master 重放：相同 4 像素步长下，4.0 m 观测保留 9 个旧体素、4 列；4.5 m 有效观测剩 5 个体素、2 列。两组均观测 40 次地图更新。剩余高度没有有效背景射线，不能改成自由空间；此结果是保存快照的受控重放，不是实机清除耗时或完整动态场景通过。部署重启地图后的空白也不算清障成功证据。
+
+2026-10-09 方式三四项优化：多视角外观模板、强身份匹配下的有界重识别与断裂轨迹处理；相机投影视野约束；里程计实际速度制动包络、VoxelLayer；登记/独立样本评估、录包/隔离回放与人工结论配合的赛道报告。补上导航终态回调锁定和本车持续停稳判定，包括终点附近重新识别后的停车。Windows Python 3.14.7 全项目 **113 项通过，无跳过**；46 个 Python 文件及 launch/test/package XML、配置语义检查通过。真实 Kinetic/Xenial 基础容器中 56 项核心测试：52 项通过，4 项 Python 3 报告加载测试明确跳过（已由 Windows 全量测试覆盖）；方式三节点及工具的 Python 2 语法解析通过。
+
+新增固定基础镜像摘要的 Kinetic Docker 构建和 ROS 导航冒烟测试。**真实 Kinetic catkin 构建及 ROS/cv_bridge/TF/VoxelLayer/DWA 冒烟已在 GitHub Actions 通过**，证据：[15c680f 的三项 CI](https://github.com/aliensco/intelligent_robot_system/actions/runs/38014320329)。测试确认实际生效的 DWA 限速、合成观测下的正向导航和简化底盘移动、丢失后速度归零、影子模式无底盘输出发布者；ROS 报告为 1 个功能测试成功（catkin 汇总另计包装测试，共 2 项、0 失败）。测试通过合成的赛前环视观测建立初始地图覆盖，不等于实机准备或完整赛道绕障。
+
+集成验证中修正了 Kinetic 的 DWA 参数名，并将原地转动最低速度设为第一控制周期可达的值；静态校验也检查此起步条件。本地旧软件源下载遭遇 502/超时后已停止，ROS 验证由上述远端环境完成。未连接 Kinect、底盘或进行真实赛道验收；模板默认仍为空，实机执行需真实模板与完整标定。视野约束仅做短时固定目标投影，VoxelLayer 也不能替代真实盲区检查。
+
+2026-10-09 方式三控制链路开发：在仓库独立 `.venv` 安装 PyYAML 6.0.3、NumPy 2.5.3、OpenCV headless 5.0.0.93，Python 3.14.7 下全项目 **88 项测试通过，无跳过**；其中方式三 56 项。38 个 Python 文件及 XML/YAML/动作结构与方式三配置语义检查通过。覆盖真实 OpenCV 合成图像检测、毫米/米换算、颜色歧义、连续关联、目标丢失与超时、光学坐标变换、停止路径碰撞、影子模式无底盘发布者、未标定拒绝执行、导航失败锁定、最终目标小位移以及整车进入终点。已编写 move_base 滚动 odom 地图与 DWA 配置，但没有运行真实 ROS/navigation，因此不能把核心和消息替身测试称为实际绕障测试。Kinetic 的旧版 OpenCV、Python 2、catkin 构建和整车性能仍待验证；CI 已增加纯核心 Python 2 测试但本次未执行远端 CI。
+
+2026-10-09 方式三开发复查：新增 RGB-D 诊断核心、ROS 回调替身测试、无设备合成数据入口。当前 Windows Python 3.14.7 上共发现 48 项测试，45 项通过，3 项原有视觉测试因缺少 OpenCV/NumPy 跳过；方式三新增 16 项全部通过。静态检查通过 26 个 Python 文件及 launch/package XML、YAML、动作文件。尚未在 ROS 虚拟机运行 catkin_make 或 demo.launch，也未验证 Kinect。下文“32 项全部通过”为此前记录，不能视为本次环境结果。新增 Python 2 核心检查已配置到 CI，本次未实际运行 CI。
+
 在 Windows 开发主机运行 Python 单元测试和项目静态检查；没有连接 TonyPi、Kinect 或 Turtlebot2，也没有 ROS master/导航运行环境。
 
 2026-10-09：Python 3.14 环境下 32 项单元测试通过，含 OpenCV 合成色块/球和无目标图像检查；Python、launch/package XML、YAML、路线与全部五个 d6a 文件结构检查通过。Python 2.7 的核心测试和节点语法检查由 GitHub Actions 单独执行，本机没有 Python 2/ROS Kinetic，不能把 Python 3 通过说成 ROS 集成通过。
@@ -24,7 +38,7 @@ python3 humanoid/scripts/competition.py --simulate
 
 | 项目 | 测量结果 | 操作者与日期 |
 |---|---|---|
-| VM ROS 发行版与 Python 版本 | 待确认，Ubuntu 16.04 按 Kinetic 配置 | |
+| VM ROS 发行版与 Python 版本 | Ubuntu 16.04 / ROS Kinetic / Python 2.7，已连接实机确认 | 2026-10-10 |
 | Pi SDK 与 Python 版本 | 待测 | |
 | 抓取物体尺寸、重量、颜色 | 待测 | |
 | head pan/tilt 零位 | 待测 | |

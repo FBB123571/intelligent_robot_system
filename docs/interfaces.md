@@ -1,5 +1,9 @@
 # 多机接口约定
 
+方式三优化后的 follower/gate 必须接入本车新鲜 `nav_msgs/Odometry`（header 为本车 odom、child_frame_id 为本车 base），gate 还需注册 RGB 的 CameraInfo 与相机安装 TF。`follow.launch` 的 odom_topic 和 info_topic 会统一重映射。身份模板、视野、制动与录包参数见方式三教程；回放只能在独立 ROS master 的影子模式运行。
+
+方式三当前有独立实现，见 [follow3](../turtlebot/follow3/README.md)。它使用本车 `odom` 中的实时 RGB-D 目标和滚动 costmap，不需要 AMCL 或共享 `map` 原点；下文共同地图要求适用于方式二和共享前车地图位姿的方式四。方式三复用 `/competition/mission` 和 `/competition/estop`，其专用门控为 `rgbd_velocity_gate.py`，不要同时启动两个门控竞争底盘输入。具体单车/多机命名参数以方式三 `follow.launch` 为准。
+
 ## 网络与版本
 
 全队使用一个 ROS master。假设 ROS 主机为 192.168.1.100、Pi 为 192.168.1.101，实际 IP 以现场为准。每台运行 ROS 节点的电脑设置：

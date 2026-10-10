@@ -14,3 +14,4 @@ logs/
 *.local.csv
 .env
 .tools/
+.ros-test-results/

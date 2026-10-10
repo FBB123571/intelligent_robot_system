@@ -1,0 +1,23 @@
+<launch>
+  <!-- Isolated frames/topics: this test never connects to a hardware driver. -->
+  <group ns="clearing_regression">
+    <node pkg="move_base" type="move_base" name="move_base" output="screen" required="true">
+      <rosparam command="load" file="$(find rgbd_following)/config/navigation.yaml" />
+      <rosparam command="load" file="$(find rgbd_following)/config/costmap.yaml" ns="global_costmap" />
+      <rosparam command="load" file="$(find rgbd_following)/config/costmap.yaml" ns="local_costmap" />
+      <param name="global_costmap/global_frame" value="clearing_regression_odom" />
+      <param name="global_costmap/robot_base_frame" value="clearing_regression_base" />
+      <param name="local_costmap/global_frame" value="clearing_regression_odom" />
+      <param name="local_costmap/robot_base_frame" value="clearing_regression_base" />
+      <!-- Include the far endpoint so map-edge clipping cannot mask the test. -->
+      <param name="global_costmap/width" value="10.0" />
+      <param name="global_costmap/height" value="10.0" />
+      <param name="local_costmap/width" value="10.0" />
+      <param name="local_costmap/height" value="10.0" />
+      <remap from="cmd_vel" to="unused_cmd_vel" />
+      <remap from="odom" to="unused_odom" />
+    </node>
+  </group>
+  <test test-name="clearing_observations" pkg="rgbd_following"
+        type="clearing_observations.py" time-limit="100" />
+</launch>
