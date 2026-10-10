@@ -34,9 +34,11 @@ class NavigationSmoke(unittest.TestCase):
         q = mount.transform.rotation
         q.x,q.y,q.z,q.w = -.5,.5,-.5,.5
         static.sendTransform(mount)
-        seen = dict(valid=False, grid=False, positive=False, command=None, status='', gate='')
+        seen = dict(valid=False, grid=False, positive=False, command=None, status='', gate='', grid_counts={})
         def valid(m): seen['valid'] = m.data
-        def grid(m): seen['grid'] = len(m.data)>0
+        def grid(m):
+            seen['grid'] = len(m.data)>0
+            seen['grid_counts'] = dict(unknown=m.data.count(-1),free=m.data.count(0),occupied=m.data.count(100))
         def command(m):
             seen['command'] = (time.time(),m.linear.x,m.angular.z)
             seen['positive'] = seen['positive'] or m.linear.x>0
@@ -57,6 +59,14 @@ class NavigationSmoke(unittest.TestCase):
             x += v*math.cos(heading)*dt
             y += v*math.sin(heading)*dt
             heading += w*dt
+            # Pre-match fixture: provide actual depth observations around the
+            # stationary base before carrying starts. This is input generation,
+            # not a recovery behavior: the controller still emits zero in idle.
+            elapsed = wall-start
+            if elapsed < 6.:
+                x,y,heading,v,w = 0.,0.,2*math.pi*elapsed/6.,0.,2*math.pi/6.
+            elif elapsed < 7.:
+                x,y,heading,v,w = 0.,0.,0.,0.,0.
             stamp = rospy.Time.now()
             base = TransformStamped()
             base.header.frame_id,base.child_frame_id,base.header.stamp = 'odom','base_footprint',stamp
@@ -69,7 +79,7 @@ class NavigationSmoke(unittest.TestCase):
             odom.pose.pose.orientation = base.transform.rotation
             odom.twist.twist.linear.x,odom.twist.twist.angular.z = v,w
             pubs['odom'].publish(odom)
-            mission.publish(String(data='carrying'))
+            mission.publish(String(data='carrying' if elapsed>=7. else 'idle'))
             estop.publish(Bool(data=False))
             info = CameraInfo()
             info.width,info.height = 320,240
@@ -79,7 +89,7 @@ class NavigationSmoke(unittest.TestCase):
             depth = np.full((240,320),4.,np.float32)
             for row in range(121,240):
                 depth[row,:] = min(4.,.5*250/(row-120))
-            target_x = 1.2+min(max(0.,wall-start-2)*.10,2.5)
+            target_x = 1.2+min(max(0.,elapsed-9)*.10,2.5)
             dx,dy = target_x-x,-y
             forward = math.cos(heading)*dx+math.sin(heading)*dy
             lateral = -math.sin(heading)*dx+math.cos(heading)*dy
