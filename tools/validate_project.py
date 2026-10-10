@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'humanoid/scripts'))
 from competition import action_frames
 from competition_core.mission import validate_route
+from task_feedback import validate_feedback
 sys.path.insert(0, str(ROOT / 'turtlebot/follow3/rgbd_following/src'))
 from rgbd_following_core.settings import validate as validate_rgbd
 
@@ -28,6 +29,14 @@ def main():
         yaml.safe_load(path.read_text(encoding='utf-8'))
     config = yaml.safe_load((ROOT / 'humanoid/config/competition.yaml').read_text(encoding='utf-8'))
     validate_route(config)
+    # Default ROIs deliberately remain uncalibrated; hardware checks enforce them.
+    import copy
+    feedback_check = copy.deepcopy(config)
+    if feedback_check['feedback']['held_roi'] is None:
+        feedback_check['feedback']['held_roi'] = [0, 0, .4, .4]
+    if feedback_check['feedback']['placed_roi'] is None:
+        feedback_check['feedback']['placed_roi'] = [.6, .6, 1, 1]
+    validate_feedback(feedback_check)
     validate_rgbd(yaml.safe_load((ROOT / 'turtlebot/follow3/rgbd_following/config/follow.yaml').read_text(encoding='utf-8')))
     navigation = yaml.safe_load((ROOT / 'turtlebot/follow3/rgbd_following/config/navigation.yaml').read_text(encoding='utf-8'))
     dwa = navigation['DWAPlannerROS']

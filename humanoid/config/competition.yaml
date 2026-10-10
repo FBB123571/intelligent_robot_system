@@ -7,9 +7,11 @@ search_timeout: 60.0
 approach_action_limit: 80
 head: {pan: 1500, tilt: 1500, pan_id: 2, tilt_id: 1}
 vision:
-  # OpenCV LAB, not HSV. Replace with measured thresholds from the Pi.
-  lower_lab: [20, 35, 135]
-  upper_lab: [240, 120, 240]
+  target_color: blue
+  # OpenCV HSV: hue 0..179. Starting thresholds; tune on the actual blue block.
+  color_space: HSV
+  lower_hsv: [95, 70, 40]
+  upper_hsv: [135, 255, 255]
   min_area: 0.003
   max_area: 0.50
   center_x: 0.50
@@ -27,6 +29,28 @@ actions:
   left: grab_turn_left
   right: grab_turn_right
   release: grab_release
+  # Candidate reverse-grab reset: validate against the actual failed-grasp pose.
+  retry_reset: grab_release
+grasp_attempts: 3
+feedback:
+  verify_carry: true
+  # Normalized ROIs: [x0,y0,x1,y1]; REQUIRED calibration before hardware use.
+  # Camera must see the carried blue block and the placement surface separately.
+  held_roi: null
+  placed_roi: null
+  roi_min_area: 0.03
+  roi_max_area: 0.95
+  held: {mode: vision, file: '', timeout: 3.0, max_age: 0.5, stable_samples: 6}
+  released: {mode: vision, file: '', timeout: 3.0, max_age: 0.5, stable_samples: 6}
+  # Adapter/operator supplies a NEW placement_ready observation after route end.
+  placement_ready: {mode: file, file: /tmp/tonypi_placement.json, timeout: 30.0, max_age: 0.5, stable_samples: 3}
+obstacle_guard:
+  enabled: true
+  file: /tmp/tonypi_distance.json
+  max_age: 0.3
+  # Calibrate for body/arms/load envelope, sensor offset and stopping travel.
+  stop_distance_m: 0.30
+  poll_seconds: 0.05
 hold_arm_servos: [6, 7, 8, 14, 15, 16]
 # cycles are action repetitions, NOT meters/degrees. Measure before use.
 route:

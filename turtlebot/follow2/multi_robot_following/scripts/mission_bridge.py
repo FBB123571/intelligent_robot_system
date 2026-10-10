@@ -28,7 +28,9 @@ def main():
     state = 'idle'
     run_id = None
     sequence = -1
-    valid = ('idle', 'searching', 'grasping', 'carrying', 'releasing', 'done', 'fault', 'stopped')
+    valid = ('idle', 'searching', 'grasping', 'verifying_grasp', 'grasp_success',
+             'grasp_failed', 'retrying', 'carrying', 'checking_hold',
+             'checking_placement', 'releasing', 'verifying_release', 'done', 'fault', 'stopped')
     try:
         while not rospy.is_shutdown():
             try:

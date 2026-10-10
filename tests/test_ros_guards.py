@@ -154,6 +154,17 @@ class RosGuardTests(unittest.TestCase):
         node.allowed.publish.assert_called_with(False)
         node.status.publish.assert_called_with('target_lost_hold_position')
 
+    def test_grasp_and_placement_verification_block_following(self):
+        for state in ('verifying_grasp', 'grasp_failed', 'retrying', 'checking_hold',
+                      'checking_placement', 'verifying_release'):
+            node = self.follower()
+            node.goal = (2.1, 2., 0.)
+            node.mission = state
+            node.step()
+            node.client.cancel_goal.assert_called_once()
+            node.allowed.publish.assert_called_with(False)
+            node.client.send_goal.assert_not_called()
+
     def test_stale_tf_bad_localization_costmap_or_mission_stops(self):
         for key in ('loc_stamp', 'mission_stamp', 'grid_stamp'):
             node = self.follower()

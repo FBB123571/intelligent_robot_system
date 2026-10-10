@@ -25,6 +25,8 @@ source ~/catkin_ws/devel/setup.bash
 
 间隔 0.2 秒，序号递增，桥忽略乱序消息；1 秒没有有效消息即发布 stopped。新 run_id 在旧会话超时后才接入。各后车还独立检查桥消息新鲜度，不依赖桥进程一定存活。
 
+抓取/放置检查新增 `verifying_grasp`、`grasp_success`、`grasp_failed`、`retrying`、`checking_hold`、`checking_placement`、`verifying_release`。桥会转发这些状态，follower 在这些状态下关闭运动许可；`done` 仅在放置确认后发布。Pi 测距及外部反馈文件协议见[反馈指南](grasp_safety_placement.md)。
+
 ## 命名空间与 TF
 
 | 设备 | 节点与话题命名空间 | 里程计坐标系 | 机体坐标系 |

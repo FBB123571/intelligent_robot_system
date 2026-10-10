@@ -23,6 +23,7 @@ import uuid
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'turtlebot/follow2/multi_robot_following/src'))
 from competition_core.mission import Approach, validate_route
+from task_feedback import DistanceGuard, TaskFeedback, validate_feedback
 
 
 class Stopped(RuntimeError):
@@ -83,7 +84,11 @@ class Motion(object):
         self.config, self.stop, self.execute = config, stop, execute
         self.frames = {}
         self.hold_values = {}
-        for name in validate_route(config):
+        self.guard = DistanceGuard(config['obstacle_guard']) if execute else None
+        names = set(validate_route(config))
+        if config['actions'].get('retry_reset'):
+            names.add(config['actions']['retry_reset'])
+        for name in names:
             if execute:
                 self.frames[name] = action_frames(Path(config['action_dir']) / (name + '.d6a'))
         self.controller = self.old_board = None
@@ -100,11 +105,41 @@ class Motion(object):
             else:
                 self.controller = controller.Controller(sdk.Board())
 
-    def wait(self, seconds):
-        if self.stop.wait(seconds):
+    def check_safety(self):
+        if self.stop.is_set():
             raise Stopped('stop requested')
+        guard = getattr(self, 'guard', None)
+        if guard:
+            guard.check()
+
+    def wait(self, seconds):
+        deadline = time.monotonic() + seconds
+        while True:
+            self.check_safety()
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return
+            interval = self.config.get('obstacle_guard', {}).get('poll_seconds', .05)
+            if self.stop.wait(min(interval, remaining)):
+                raise Stopped('stop requested')
+
+    def halt(self):
+        """Stop interpolating bus servos where SDK supports it; retain torque."""
+        if not self.execute:
+            return
+        try:
+            if self.controller:
+                self.controller.board.bus_servo_stop(list(range(1, 17)))
+            elif hasattr(self.old_board, 'stopBusServo'):
+                for servo in range(1, 17):
+                    self.old_board.stopBusServo(servo)
+            else:
+                print('[stop] SDK lacks servo stop; last commanded frame may finish')
+        except Exception as exc:
+            print('[stop] Servo stop failed:', exc)
 
     def head(self):
+        self.check_safety()
         if not self.execute:
             return
         head = self.config['head']
@@ -118,16 +153,14 @@ class Motion(object):
         self.wait(0.6)
 
     def action(self, kind):
-        if self.stop.is_set():
-            raise Stopped('stop requested')
+        self.check_safety()
         name = self.config['actions'][kind]
         print('[action]', kind, name)
         if not self.execute:
             self.wait(0.01)
             return
         for frame in self.frames[name]:
-            if self.stop.is_set():
-                raise Stopped('stop requested')
+            self.check_safety()
             if kind in ('forward', 'left', 'right'):
                 check_hold(self.config)
             # Official TonyPi 1.20 diagram identifies 16 body bus servos.
@@ -144,6 +177,8 @@ class Motion(object):
         if kind == 'grab':
             last = self.frames[name][-1]
             self.hold_values = {servo: last[servo + 1] for servo in self.config.get('hold_arm_servos', [])}
+        elif kind in ('release', 'retry_reset'):
+            self.hold_values = {}
         # Keep the final pose. Never insert a generic stand action while carrying.
 
 
@@ -198,8 +233,14 @@ def detect(frame, config):
     import cv2
     import numpy as np
     image = cv2.resize(frame, (320, 240))
-    lab = cv2.cvtColor(cv2.GaussianBlur(image, (3, 3), 0), cv2.COLOR_BGR2LAB)
-    mask = cv2.inRange(lab, np.array(config['lower_lab'], dtype=np.uint8), np.array(config['upper_lab'], dtype=np.uint8))
+    space = config.get('color_space', 'LAB').upper()
+    if space not in ('LAB', 'HSV'):
+        raise ValueError('color_space must be LAB or HSV')
+    converted = cv2.cvtColor(cv2.GaussianBlur(image, (3, 3), 0),
+                             cv2.COLOR_BGR2HSV if space == 'HSV' else cv2.COLOR_BGR2LAB)
+    suffix = space.lower()
+    mask = cv2.inRange(converted, np.array(config['lower_' + suffix], dtype=np.uint8),
+                      np.array(config['upper_' + suffix], dtype=np.uint8))
     kernel = np.ones((3, 3), dtype=np.uint8)
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
@@ -221,7 +262,7 @@ def check_hold(config):
             raise RuntimeError('Object dropped/not held; return to drop location before resuming')
 
 
-def carry(config, motion, heartbeat):
+def carry(config, motion, heartbeat, feedback):
     heartbeat.set('carrying')
     for step in config['route']:
         if step['kind'] == 'wait':
@@ -236,10 +277,117 @@ def carry(config, motion, heartbeat):
                 check_hold(config)
                 motion.action(step['kind'])
                 motion.wait(config['settle_seconds'])
+                if config['feedback'].get('verify_carry', True):
+                    heartbeat.set('checking_hold')
+                    if not feedback.confirm('held'):
+                        raise RuntimeError('Holding confirmation lost; stop for object recovery')
+                    heartbeat.set('carrying')
     check_hold(config)
+    heartbeat.set('checking_placement')
+    if not feedback.confirm('placement_ready'):
+        raise RuntimeError('Placement area not confirmed; keep object held')
+    heartbeat.set('checking_hold')
+    if not feedback.confirm('held'):
+        raise RuntimeError('Object no longer held before release')
     heartbeat.set('releasing')
     motion.action('release')
+    motion.wait(config['settle_seconds'])
+    heartbeat.set('verifying_release')
+    if not feedback.confirm('released'):
+        raise RuntimeError('Release not confirmed; task remains incomplete')
     heartbeat.set('done')
+
+
+def grasp_and_carry(config, motion, heartbeat, approach, feedback):
+    for attempt in range(1, config['grasp_attempts'] + 1):
+        heartbeat.set('searching')
+        approach()  # Re-detect and align after every reset; never blindly re-grab.
+        heartbeat.set('grasping')
+        print('[grasp attempt]', attempt, '/', config['grasp_attempts'])
+        motion.action('grab')
+        motion.wait(config['settle_seconds'])
+        heartbeat.set('verifying_grasp')
+        if feedback.confirm('held'):
+            heartbeat.set('grasp_success')
+            carry(config, motion, heartbeat, feedback)
+            return
+        heartbeat.set('grasp_failed')
+        if attempt == config['grasp_attempts']:
+            raise RuntimeError('Grasp attempts exhausted; route not started')
+        heartbeat.set('retrying')
+        motion.action('retry_reset')
+        motion.wait(config['settle_seconds'])
+
+
+def approach_object(config, motion, camera, heartbeat, debug=False, simulate=False):
+    planner = Approach(config['vision'])
+    if simulate:
+        for unused in range(config['vision']['stable_frames']):
+            decision = planner.decide((config['vision']['center_x'], .95, .1))
+        if decision != 'grab':
+            raise RuntimeError('simulation did not reach grab state')
+        return
+    motion.head()
+    deadline = time.monotonic() + config['search_timeout']
+    last, actions = time.monotonic(), 0
+    while not motion.stop.is_set():
+        motion.check_safety()
+        now = time.monotonic()
+        if now >= deadline:
+            raise RuntimeError('Object search/approach timed out')
+        frame, stamp = camera.read_after(last)
+        if frame is None:
+            if now - last > config['camera_timeout']:
+                raise RuntimeError('Camera frames missing/stale')
+            motion.wait(.02)
+            continue
+        last = stamp
+        observation, mask = detect(frame, config['vision'])
+        decision = planner.decide(observation)
+        if debug:
+            camera.cv2.imshow('blue object mask', mask)
+            if camera.cv2.waitKey(1) & 0xff in (27, ord('q')):
+                raise Stopped('debug quit')
+        if decision == 'grab':
+            return
+        if decision != 'wait':
+            actions += 1
+            if actions > config['approach_action_limit']:
+                raise RuntimeError('Approach action limit exceeded')
+            motion.action(decision)
+            motion.wait(config['settle_seconds'])
+            last = time.monotonic()
+            planner.ready, planner.last = 0, None
+    raise Stopped('stop requested')
+
+
+def preview_vision(config, motion, camera, debug):
+    last, printed = time.monotonic(), 0
+    while not motion.stop.is_set():
+        frame, stamp = camera.read_after(last)
+        if frame is None:
+            if time.monotonic() - last > config['camera_timeout']:
+                raise RuntimeError('Camera frames missing/stale')
+            motion.wait(.02)
+            continue
+        last = stamp
+        observation, mask = detect(frame, config['vision'])
+        if stamp - printed > .5:
+            print('[blue observation x,bottom,area]', observation)
+            printed = stamp
+        if debug:
+            camera.cv2.imshow('blue object mask', mask)
+            display = frame.copy()
+            height, width = frame.shape[:2]
+            for key, color in (('held_roi', (0, 255, 0)), ('placed_roi', (0, 255, 255))):
+                roi = config['feedback'].get(key)
+                if isinstance(roi, list) and len(roi) == 4:
+                    x0, y0, x1, y1 = roi
+                    camera.cv2.rectangle(display, (int(x0 * width), int(y0 * height)),
+                                         (int(x1 * width), int(y1 * height)), color, 2)
+            camera.cv2.imshow('camera and feedback ROIs', display)
+            if camera.cv2.waitKey(1) & 0xff in (27, ord('q')):
+                return
 
 
 def main():
@@ -248,8 +396,11 @@ def main():
     parser.add_argument('--execute', action='store_true', help='send servo commands after calibration checks')
     parser.add_argument('--simulate', action='store_true', help='synthetic vision and printed route, no camera/hardware')
     parser.add_argument('--debug', action='store_true')
+    parser.add_argument('--vision-only', action='store_true', help='preview blue recognition without running actions')
     parser.add_argument('--check-actions', action='store_true', help='validate configured Pi action files without importing hardware SDK')
     args = parser.parse_args()
+    if args.vision_only and (args.execute or args.simulate):
+        parser.error('--vision-only cannot be combined with --execute or --simulate')
     import yaml
     with open(args.config, encoding='utf-8') as stream:
         config = yaml.safe_load(stream)
@@ -257,7 +408,10 @@ def main():
     if any(not isinstance(i, int) or not 1 <= i <= 16 for i in config.get('hold_arm_servos', [])):
         parser.error('hold_arm_servos must contain bus servo IDs 1..16')
     if args.check_actions:
-        for name in validate_route(config):
+        names = set(validate_route(config))
+        if config['actions'].get('retry_reset'):
+            names.add(config['actions']['retry_reset'])
+        for name in sorted(names):
             rows = action_frames(Path(config['action_dir']) / (name + '.d6a'))
             print(name, 'frames=', len(rows), 'seconds=', sum(row[1] for row in rows) / 1000.0)
         return
@@ -265,6 +419,12 @@ def main():
         parser.error('--simulate cannot be combined with --execute')
     if args.execute and config['hardware_calibrated'] is not True:
         parser.error('Record/test right turn and release, calibrate route, then set hardware_calibrated: true')
+    if args.execute:
+        try:
+            validate_feedback(config)
+            DistanceGuard(config['obstacle_guard']).check()
+        except (ValueError, RuntimeError) as exc:
+            parser.error(str(exc))
     if not args.execute:
         config['heartbeat']['enabled'] = False  # dry runs must not launch the real followers
     stop = threading.Event()
@@ -275,62 +435,26 @@ def main():
     camera = None
     try:
         motion.head()
-        heartbeat.set('searching')
-        planner = Approach(config['vision'])
-        if args.simulate:
-            for unused in range(config['vision']['stable_frames']):
-                decision = planner.decide((config['vision']['center_x'], 0.95, 0.1))
-            if decision != 'grab':
-                raise RuntimeError('simulation did not reach grab state')
-        else:
+        if not args.simulate:
             camera = Camera(config['camera'], stop)
-            deadline = time.monotonic() + config['search_timeout']
-            last = time.monotonic()
-            actions = 0
-            while not stop.is_set():
-                now = time.monotonic()
-                if now >= deadline:
-                    raise RuntimeError('Object search/approach timed out')
-                frame, stamp = camera.read_after(last)
-                if frame is None:
-                    if now - last > config['camera_timeout']:
-                        raise RuntimeError('Camera frames missing/stale')
-                    motion.wait(0.02)
-                    continue
-                last = stamp
-                observation, mask = detect(frame, config['vision'])
-                decision = planner.decide(observation)
-                if args.debug:
-                    camera.cv2.imshow('object mask', mask)
-                    if camera.cv2.waitKey(1) & 0xff in (27, ord('q')):
-                        stop.set()
-                        raise Stopped('debug quit')
-                if decision == 'grab':
-                    break
-                if decision != 'wait':
-                    actions += 1
-                    if actions > config['approach_action_limit']:
-                        raise RuntimeError('Approach action limit exceeded')
-                    motion.action(decision)
-                    motion.wait(config['settle_seconds'])
-                    last = time.monotonic()  # require a new observation AFTER body stops
-                    planner.ready = 0
-                    planner.last = None
-            if stop.is_set():
-                raise Stopped('stop requested')
-        heartbeat.set('grasping')
-        motion.action('grab')
-        motion.wait(config['settle_seconds'])
-        carry(config, motion, heartbeat)
+        if args.vision_only:
+            preview_vision(config, motion, camera, args.debug)
+            return
+        feedback_config = dict(config['feedback'], camera_timeout=config['camera_timeout'])
+        feedback = TaskFeedback(feedback_config, config['vision'], camera, motion, detect, args.simulate)
+        approach = lambda: approach_object(config, motion, camera, heartbeat, args.debug, args.simulate)
+        grasp_and_carry(config, motion, heartbeat, approach, feedback)
         # Keep done heartbeat alive while Turtlebot finishes its trailing goal.
         if args.execute:
             print('Route done; keep this process running until all followers stop. Ctrl+C exits.')
             while not stop.wait(0.2):
                 pass
     except Stopped as exc:
+        motion.halt()
         heartbeat.set('stopped')
         print(exc)
     except Exception:
+        motion.halt()
         heartbeat.set('fault')
         time.sleep(0.25)
         raise
