@@ -96,3 +96,6 @@ python3 tools/inspect_action.py humanoid/ActionGroup/grab.d6a --csv grab_frames.
 CSV 文件若已存在，工具拒绝覆盖。文件没有关节零位、正方向、夹持力和语义标签，不能仅凭其数值自动建立完整机器人运动学。
 
 直接控制工具与比赛程序应二选一控制串口和关节，不能同时启动两个控制器。腿部单关节控制会改变双足平衡，需先通过受支撑条件下的小范围标定确认姿态，再用于步态编排。
+
+
+500 中位、URDF 坐标及基于动作先验的标定见 [关节标定](joint_calibration.md)。

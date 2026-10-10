@@ -1,0 +1,491 @@
+[
+  {
+    "file": "humanoid/ActionGroup/grab.d6a",
+    "frames": 5,
+    "duration_ms": 4500,
+    "first_frame_positions": [
+      500,
+      390,
+      500,
+      600,
+      500,
+      575,
+      800,
+      725,
+      500,
+      610,
+      500,
+      400,
+      500,
+      425,
+      200,
+      275
+    ],
+    "observed_ranges_not_limits": {
+      "1": [
+        500,
+        513
+      ],
+      "2": [
+        120,
+        490
+      ],
+      "3": [
+        374,
+        812
+      ],
+      "4": [
+        584,
+        600
+      ],
+      "5": [
+        500,
+        507
+      ],
+      "6": [
+        571,
+        575
+      ],
+      "7": [
+        800,
+        921
+      ],
+      "8": [
+        477,
+        726
+      ],
+      "9": [
+        498,
+        500
+      ],
+      "10": [
+        529,
+        890
+      ],
+      "11": [
+        184,
+        595
+      ],
+      "12": [
+        398,
+        403
+      ],
+      "13": [
+        500,
+        505
+      ],
+      "14": [
+        389,
+        425
+      ],
+      "15": [
+        79,
+        200
+      ],
+      "16": [
+        274,
+        596
+      ]
+    },
+    "pairing_is_diagram_prior_not_inferred": [
+      {
+        "ids": [
+          1,
+          9
+        ],
+        "sum_min": 1000,
+        "sum_max": 1013,
+        "complement_rmse_units": 9.143
+      },
+      {
+        "ids": [
+          2,
+          10
+        ],
+        "sum_min": 1000,
+        "sum_max": 1019,
+        "complement_rmse_units": 11.045
+      },
+      {
+        "ids": [
+          3,
+          11
+        ],
+        "sum_min": 969,
+        "sum_max": 1000,
+        "complement_rmse_units": 14.332
+      },
+      {
+        "ids": [
+          4,
+          12
+        ],
+        "sum_min": 982,
+        "sum_max": 1000,
+        "complement_rmse_units": 11.916
+      },
+      {
+        "ids": [
+          5,
+          13
+        ],
+        "sum_min": 1000,
+        "sum_max": 1012,
+        "complement_rmse_units": 8.402
+      },
+      {
+        "ids": [
+          6,
+          14
+        ],
+        "sum_min": 960,
+        "sum_max": 1000,
+        "complement_rmse_units": 28.737
+      },
+      {
+        "ids": [
+          7,
+          15
+        ],
+        "sum_min": 1000,
+        "sum_max": 1041,
+        "complement_rmse_units": 20.401
+      },
+      {
+        "ids": [
+          8,
+          16
+        ],
+        "sum_min": 1000,
+        "sum_max": 1079,
+        "complement_rmse_units": 58.9
+      }
+    ]
+  },
+  {
+    "file": "humanoid/ActionGroup/grab_go_forward.d6a",
+    "frames": 10,
+    "duration_ms": 950,
+    "first_frame_positions": [
+      487,
+      401,
+      531,
+      646,
+      477,
+      574,
+      930,
+      459,
+      486,
+      655,
+      460,
+      401,
+      488,
+      424,
+      57,
+      623
+    ],
+    "observed_ranges_not_limits": {
+      "1": [
+        471,
+        514
+      ],
+      "2": [
+        343,
+        403
+      ],
+      "3": [
+        531,
+        593
+      ],
+      "4": [
+        575,
+        652
+      ],
+      "5": [
+        477,
+        515
+      ],
+      "6": [
+        573,
+        575
+      ],
+      "7": [
+        915,
+        955
+      ],
+      "8": [
+        410,
+        484
+      ],
+      "9": [
+        486,
+        529
+      ],
+      "10": [
+        599,
+        658
+      ],
+      "11": [
+        420,
+        460
+      ],
+      "12": [
+        358,
+        409
+      ],
+      "13": [
+        485,
+        532
+      ],
+      "14": [
+        422,
+        432
+      ],
+      "15": [
+        19,
+        57
+      ],
+      "16": [
+        593,
+        664
+      ]
+    },
+    "pairing_is_diagram_prior_not_inferred": [
+      {
+        "ids": [
+          1,
+          9
+        ],
+        "sum_min": 957,
+        "sum_max": 1043,
+        "complement_rmse_units": 33.437
+      },
+      {
+        "ids": [
+          2,
+          10
+        ],
+        "sum_min": 942,
+        "sum_max": 1056,
+        "complement_rmse_units": 41.147
+      },
+      {
+        "ids": [
+          3,
+          11
+        ],
+        "sum_min": 956,
+        "sum_max": 1042,
+        "complement_rmse_units": 25.766
+      },
+      {
+        "ids": [
+          4,
+          12
+        ],
+        "sum_min": 933,
+        "sum_max": 1049,
+        "complement_rmse_units": 46.083
+      },
+      {
+        "ids": [
+          5,
+          13
+        ],
+        "sum_min": 965,
+        "sum_max": 1047,
+        "complement_rmse_units": 32.128
+      },
+      {
+        "ids": [
+          6,
+          14
+        ],
+        "sum_min": 995,
+        "sum_max": 1007,
+        "complement_rmse_units": 4.183
+      },
+      {
+        "ids": [
+          7,
+          15
+        ],
+        "sum_min": 944,
+        "sum_max": 1003,
+        "complement_rmse_units": 42.082
+      },
+      {
+        "ids": [
+          8,
+          16
+        ],
+        "sum_min": 1060,
+        "sum_max": 1089,
+        "complement_rmse_units": 77.112
+      }
+    ]
+  },
+  {
+    "file": "humanoid/ActionGroup/grab_turn_left.d6a",
+    "frames": 7,
+    "duration_ms": 1250,
+    "first_frame_positions": [
+      498,
+      382,
+      502,
+      590,
+      496,
+      574,
+      922,
+      437,
+      499,
+      612,
+      498,
+      401,
+      499,
+      409,
+      24,
+      637
+    ],
+    "observed_ranges_not_limits": {
+      "1": [
+        486,
+        501
+      ],
+      "2": [
+        381,
+        389
+      ],
+      "3": [
+        502,
+        538
+      ],
+      "4": [
+        588,
+        594
+      ],
+      "5": [
+        484,
+        499
+      ],
+      "6": [
+        574,
+        575
+      ],
+      "7": [
+        922,
+        947
+      ],
+      "8": [
+        391,
+        449
+      ],
+      "9": [
+        478,
+        499
+      ],
+      "10": [
+        500,
+        612
+      ],
+      "11": [
+        484,
+        553
+      ],
+      "12": [
+        336,
+        408
+      ],
+      "13": [
+        499,
+        502
+      ],
+      "14": [
+        409,
+        425
+      ],
+      "15": [
+        24,
+        52
+      ],
+      "16": [
+        637,
+        685
+      ]
+    },
+    "pairing_is_diagram_prior_not_inferred": [
+      {
+        "ids": [
+          1,
+          9
+        ],
+        "sum_min": 964,
+        "sum_max": 1000,
+        "complement_rmse_units": 20.966
+      },
+      {
+        "ids": [
+          2,
+          10
+        ],
+        "sum_min": 882,
+        "sum_max": 998,
+        "complement_rmse_units": 61.818
+      },
+      {
+        "ids": [
+          3,
+          11
+        ],
+        "sum_min": 986,
+        "sum_max": 1065,
+        "complement_rmse_units": 32.393
+      },
+      {
+        "ids": [
+          4,
+          12
+        ],
+        "sum_min": 930,
+        "sum_max": 997,
+        "complement_rmse_units": 35.006
+      },
+      {
+        "ids": [
+          5,
+          13
+        ],
+        "sum_min": 983,
+        "sum_max": 1001,
+        "complement_rmse_units": 7.474
+      },
+      {
+        "ids": [
+          6,
+          14
+        ],
+        "sum_min": 983,
+        "sum_max": 1000,
+        "complement_rmse_units": 6.676
+      },
+      {
+        "ids": [
+          7,
+          15
+        ],
+        "sum_min": 946,
+        "sum_max": 995,
+        "complement_rmse_units": 31.866
+      },
+      {
+        "ids": [
+          8,
+          16
+        ],
+        "sum_min": 1062,
+        "sum_max": 1094,
+        "complement_rmse_units": 74.988
+      }
+    ]
+  }
+]
