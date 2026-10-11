@@ -1,0 +1,5 @@
+<launch>
+  <!-- No camera driver or motion controller is started here. -->
+  <include file="$(find path_planning)/launch/depth_scan.launch"/>
+  <include file="$(find turtlebot_navigation)/launch/includes/gmapping/kinect_gmapping.launch.xml"/>
+</launch>
