@@ -1,5 +1,7 @@
 # ROS Kinetic 虚拟机：方式二建图避障跟随
 
+底盘、Kinect、键盘遥控、建图及保存地图的逐终端命令见 [Turtlebot 调试命令](turtlebot_debug_commands.md)。最新设备复查已看到 Kinect Camera 和 Audio；底盘串口及默认 ROS master 尚未出现。
+
 虚拟机：`ssh haiden@192.168.118.129`。密码仅用于 SSH 登录，不保存在仓库。系统为 Ubuntu 16.04、ROS Kinetic、Python 2.7。独立功能包部署在 `/home/haiden/catkin_ws/src/multi_robot_following`，源码对应仓库 `turtlebot/follow2/multi_robot_following`，不覆盖原来的课程功能包。
 
 包内包括：gmapping 建图入口、固定地图上的 AMCL 定位、move_base/DWA 避障导航、前车地图轨迹跟随、AR 观测到地图的转换，以及输出速度检查。目标、定位、TF、代价地图、任务状态和扫描数据缺失/过期时保持停止。默认最大前进速度 0.15 m/s，不盲目倒车。
