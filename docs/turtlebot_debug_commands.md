@@ -1,6 +1,6 @@
 # Turtlebot 底盘、键盘遥控和建图调试命令
 
-2026-10-11 检查虚拟机 `192.168.118.129`：Kinect Camera（045e:02ae）和 Audio（045e:02ad）已枚举，底盘串口尚未出现，默认 ROS master 尚未启动。下面命令在虚拟机运行，每项长期运行的命令使用单独终端。
+2026-10-11 最新复查：小组已实机验证底盘和键盘遥控命令可用；虚拟机 `192.168.118.129` 已有 `/mobile_base`、`/turtlebot_teleop_keyboard` 和 `/slam_gmapping`。`turtlebot_navigation` 与 `turtlebot_rviz_launchers` 均能找到。下面优先使用原有 TurtleBot 课程建图与 RViz 入口，每项长期运行的命令使用单独终端。
 
 ## 每个终端先加载环境
 
@@ -48,13 +48,13 @@ roslaunch turtlebot_bringup minimal.launch serialport:=/dev/ttyUSB0
 
 有多个串口时按设备 ID 确认，不直接猜 ttyUSB0。若连 ttyUSB* 都没有，需要先解决底盘 USB 透传；仅有 Kinect 并不能驱动底盘或提供里程计。
 
-## 终端 3：Kinect 和深度转扫描
+## 终端 3：原有课程建图（包含 Kinect 和深度转扫描）
 
 ```bash
-roslaunch turtlebot_bringup 3dsensor.launch 3d_sensor:=kinect scan_topic:=/scan
+roslaunch turtlebot_navigation gmapping_demo.launch 3d_sensor:=kinect
 ```
 
-课程 Kinect launch 使用 freenect，同时开启 RGB、深度和 depthimage_to_laserscan。深度转扫描按需启动处理，使用 rostopic hz /scan 或建图节点订阅后再检查频率。
+该入口自动启动 Kinect、depthimage_to_laserscan、GMapping 和 move_base，但不包含 RViz。不要再单独启动 `3dsensor.launch`、OpenNI 驱动或其他 mapping.launch，否则会重复占用相机或启动多个 GMapping。当前已运行 `/slam_gmapping` 时，请在原建图终端 Ctrl+C 结束后再切换；保留底盘和键盘终端。此阶段仅使用键盘探索，不发送 `2D Nav Goal`。
 
 ## 终端 4：键盘遥控
 
@@ -64,13 +64,21 @@ roslaunch turtlebot_teleop keyboard_teleop.launch
 
 在该终端按显示的键位操作，先降低速度并确认方向；k 停止，Ctrl+C 退出。这个节点输出到 /cmd_vel_mux/input/teleop。建图时不同时启动方式二跟随导航，避免两个控制源干扰。
 
-## 终端 5：建图
+## 终端 5：自动打开配置好的 RViz 窗口
 
 ```bash
-roslaunch multi_robot_following mapping.launch
+roslaunch turtlebot_rviz_launchers view_navigation.launch
 ```
 
-使用本包入口，不依赖当前未被 rospack 找到的 turtlebot_navigation。遥控走遍场地，观察地图逐步扩展。
+在虚拟机桌面终端执行，会打开已有导航配置的 RViz 窗口。普通 SSH 会话没有图形显示环境时，请改在虚拟机桌面运行此命令。Fixed Frame 设为 `map`，Map 使用 `/map`，LaserScan 使用 `/scan`。遥控走遍场地，观察地图逐步扩展。
+
+### PR #2 的 path_planning 入口
+
+[PR #2](https://github.com/yky666/intelligent_robot_system/pull/2) 已合并，源码见 [slam/README.md](../slam/README.md)。它的 `roslaunch path_planning mapping.launch` 仅启动深度转扫描和 GMapping，相机和 RViz 分别启动；并不会自动打开窗口。
+
+目前虚拟机 `~/catkin_ws/src/path_planning` 还是原课程版本，仅有 C++ 导航程序，没有这个 mapping.launch。PR 的 `slam/lab3.sh sync` 会拒绝覆盖它；不要直接照搬 PR 命令。当前优先用上面的原有 `turtlebot_navigation`，无需替换旧包。若后续使用 PR 版本，可按其 README 设置独立 `LAB3_CATKIN_WS` 编译。
+
+此前提供的 `multi_robot_following mapping.launch` 也是有效的轻量建图入口，只启动 GMapping，需要另外启动相机和 RViz。三种建图入口任选一种即可，保存的实际场地地图都可供方式二跟随使用。
 
 ## 终端 6：检查和保存
 
@@ -96,9 +104,11 @@ ls -l ~/catkin_ws/maps/competition.yaml ~/catkin_ws/maps/competition.pgm
 
 ## 建图完成后切换方式二跟随
 
-停止键盘遥控和 mapping.launch，保留 roscore、底盘和 Kinect，再运行：
+停止键盘遥控和 `gmapping_demo.launch`（同时结束其 move_base 和相机），保留 roscore、底盘和 RViz。重新启动完整 Kinect 驱动供 AR 识别使用，然后启动方式二跟随，分别保持两个终端运行：
 
 ```bash
+roslaunch turtlebot_bringup 3dsensor.launch 3d_sensor:=kinect scan_topic:=/scan
+# 另一个终端：
 roslaunch multi_robot_following vm_follow2.launch \
   map_file:=$HOME/catkin_ws/maps/competition.yaml marker_id:=1
 ```

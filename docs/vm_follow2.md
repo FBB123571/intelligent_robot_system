@@ -1,6 +1,6 @@
 # ROS Kinetic 虚拟机：方式二建图避障跟随
 
-底盘、Kinect、键盘遥控、建图及保存地图的逐终端命令见 [Turtlebot 调试命令](turtlebot_debug_commands.md)。最新设备复查已看到 Kinect Camera 和 Audio；底盘串口及默认 ROS master 尚未出现。
+底盘、Kinect、键盘遥控、建图及保存地图的逐终端命令见 [Turtlebot 调试命令](turtlebot_debug_commands.md)。小组已实机验证底盘和键盘遥控，最新复查已看到对应 ROS 节点；原有 turtlebot_navigation 与 turtlebot_rviz_launchers 均可找到。
 
 虚拟机：`ssh haiden@192.168.118.129`。密码仅用于 SSH 登录，不保存在仓库。系统为 Ubuntu 16.04、ROS Kinetic、Python 2.7。独立功能包部署在 `/home/haiden/catkin_ws/src/multi_robot_following`，源码对应仓库 `turtlebot/follow2/multi_robot_following`，不覆盖原来的课程功能包。
 
@@ -24,7 +24,7 @@ source devel/setup.bash
 
 ## 先建图
 
-本机已安装 gmapping，但 `rospack` 当前找不到 turtlebot_navigation，所以提供独立建图入口。先按课程方式连接底盘和 RGB-D/雷达并启动驱动，确认 `/scan`、`/odom` 以及 `odom → base_footprint → 传感器` 的 TF 正常。
+优先使用原有课程入口 `roslaunch turtlebot_navigation gmapping_demo.launch 3d_sensor:=kinect`，再用 `roslaunch turtlebot_rviz_launchers view_navigation.launch` 打开配置好的 RViz。前者已包含相机、深度转扫描、GMapping 和 move_base，不要重复启动其他建图或相机驱动。详细切换步骤见调试命令文档。也可使用下面的独立 GMapping 入口，此时另行启动相机驱动，确认 `/scan`、`/odom` 以及 `odom → base_footprint → 传感器` 的 TF 正常。
 
 ```bash
 roslaunch multi_robot_following mapping.launch
@@ -81,4 +81,4 @@ rostopic pub -1 /competition/estop std_msgs/Bool "data: true"
 
 使用独立的本机 ROS master（端口 11339）启动跟随器和速度检查节点，在没有目标、定位、任务状态和扫描输入时观测到连续零速度、motion_allowed=false、follow_status=mission_stopped。测试未启动真实底盘或向机器人速度接口发送指令。全项目本地 163 项测试通过。隔离检查日志保存在虚拟机 `~/catkin_ws/.follow2-qa`，构建日志为 `~/catkin_ws/follow2-build.log`。
 
-团队反馈硬件已连接，但从虚拟机检查时 lsusb 仅列出 VMware 虚拟 USB 设备，没有底盘串口或 USB 相机；默认 `ROS_MASTER_URI=http://localhost:11311` 无法连接 master。若硬件插在 PC 上，需要在 VMware 的可移动设备菜单中把底盘 USB 和相机连接到虚拟机；若驱动在别的机器人主机运行，则先打通局域网并配置对应 ROS master。编译与隔离启动检查不能代替实际场地建图、定位、前车数据连通和运动验证。
+早期 USB/master 检查仅代表当时设备状态。小组随后已验证底盘、键盘遥控可用，最新复查也看到对应节点；原有课程建图与 RViz 入口的 `roslaunch --nodes` 解析通过。本次复查未重新启动真实驱动、未打开 GUI 或发送运动目标，实际地图质量、定位和避障仍需现场确认。
