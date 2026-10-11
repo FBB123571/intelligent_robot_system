@@ -6,7 +6,7 @@
   <arg name="base_frame" default="$(arg robot_ns)/base_footprint" />
   <arg name="odom_frame" default="$(arg robot_ns)/odom" />
   <arg name="scan_topic" default="/$(arg robot_ns)/scan" />
-  <group ns="$(arg robot_ns)">
+  <group ns="$(eval arg('robot_ns') or '/')">
     <node pkg="map_server" type="map_server" name="map_server" args="$(arg map_file)" output="screen">
       <param name="frame_id" value="$(arg map_frame)" />
     </node>

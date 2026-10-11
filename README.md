@@ -21,6 +21,7 @@ TonyPi 识别并抱起物体，沿标定路线抱物行走、左转和右转，�
 | TonyPi SSH、实机 SDK 与独立部署 | [实机部署说明](docs/robot_ssh_deployment.md) |
 | 固定抓取姿态并套用原转向步态 | [组合转向动作](docs/carry_turn_composition.md) |
 | 按指定动作顺序运行的开环入口 | [开环版本说明](docs/open_loop.md) |
+| 虚拟机 ROS Kinetic 方式二部署与启动 | [虚拟机跟随说明](docs/vm_follow2.md) |
 | 官方舵机映射、直接关节控制和动作解析 | [直接控制说明](docs/direct_joint_control.md) |
 | 建图避障 ROS 包 | [multi_robot_following](turtlebot/follow2/multi_robot_following) |
 | 多机网络、话题与 TF | [接口约定](docs/interfaces.md) |

@@ -5,7 +5,7 @@
   <arg name="follow_distance" default="1.0" />
   <arg name="scan_topic" default="/$(arg robot_ns)/scan" />
   <arg name="cmd_vel_topic" default="/$(arg robot_ns)/cmd_vel_mux/input/navi" />
-  <group ns="$(arg robot_ns)">
+  <group ns="$(eval arg('robot_ns') or '/')">
     <node pkg="multi_robot_following" type="marker_follower.py" name="marker_follower" output="screen">
       <param name="marker_id" value="$(arg marker_id)" />
       <param name="base_frame" value="$(arg base_frame)" />
