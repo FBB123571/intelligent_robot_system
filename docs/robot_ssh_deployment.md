@@ -1,5 +1,28 @@
 # TonyPi 实机连接与部署
 
+## 2026-10-11 更换 TonyPi 后的部署
+
+新机器仍使用 `pi@192.168.149.1`，外接网卡连接其热点 `HW-80F815E4`。已从 GitHub main 部署完整仓库到 `/home/pi/intelligent_robot_system`，保留 Git 历史及 GitHub origin；通过 PC 转发 Git bundle，无需机器人访问外网。
+
+仓库 `humanoid/ActionGroup/web_control_reference` 的 9 个动作恢复到 `/home/pi/tonypi_web_control/actions`，其中 grab、carry_left、carry_right、release 是当前开环配置使用的文件。原始动作、组合/镜像候选和转向参考复制到 `/home/pi/TonyPi/ActionGroups`；覆盖前备份位于 `runtime/migration-backup-20261011`。每次动作复制均校验 SHA256 和 SQLite 完整性，记录在 `runtime/deployment-report.json`。历史归档动作仍保留在仓库的 web_control_archive 中，不作为当前动作入口。
+
+开环使用新机器原装的 `stand.d6a`：旧机器的该文件没有独立归档，不能声称它与旧文件完全相同。SDK 保留新机器原装版本，经源码确认使用 `/dev/ttyAMA0`、115200 波特率。闭环现场配置为 `runtime/competition.local.yaml`，动作目录为 `runtime/ActionGroups`，尚未完成新机器实物标定，`hardware_calibrated: false`、跟随心跳关闭。
+
+```bash
+cd /home/pi/intelligent_robot_system
+# 仅检查文件，不发送舵机指令
+python3 humanoid/scripts/open_loop.py --check-actions
+python3 humanoid/scripts/competition.py --config runtime/competition.local.yaml --check-actions
+# 模拟闭环状态机
+python3 humanoid/scripts/competition.py --config runtime/competition.local.yaml --simulate
+# 在 VNC 桌面终端预览实际相机
+python3 humanoid/scripts/competition.py --config runtime/competition.local.yaml --vision-only --debug
+# 操作员确认场地与姿态后，手动运行真实开环动作
+python3 humanoid/scripts/open_loop.py --execute
+```
+
+此部署恢复仓库中已有的代码和动作；`tonypi_web_control/actions` 的恢复不代表已安装网页控制服务，仓库未收录该服务源码。没有复制旧机器未提交的本地配置或舵机校准数据。
+
 2026-10-10 实机检查：PC 内置 WLAN 连接 SYSU-SECURE，外接 UGREEN WLAN 2 连接机器人热点。PC 机器人侧地址为 192.168.149.191，机器人地址为 192.168.149.1。地址以实际 DHCP 分配为准；无需交换两张网卡。
 
 ```powershell

@@ -52,8 +52,7 @@ class VisionTests(unittest.TestCase):
 
     def test_release_requires_empty_hand_and_visible_placed_block(self):
         from task_feedback import TaskFeedback
-        from unittest.mock import Mock
-        import time
+        from unittest.mock import Mock, patch
         config = dict(color_space='HSV', lower_hsv=[95, 70, 40], upper_hsv=[135, 255, 255],
                       min_area=.03, max_area=.95)
         held_roi, placed_roi = [0, 0, .5, .5], [.5, .5, 1, 1]
@@ -65,11 +64,20 @@ class VisionTests(unittest.TestCase):
             if placed:
                 self.cv2.rectangle(frame, (190, 150), (260, 210), (200, 80, 30), -1)
             camera = Mock()
-            camera.read_after.side_effect = lambda unused: (frame.copy(), time.monotonic())
+            # Advance virtual time for each distinct frame and polling wait.
+            # Real OpenCV latency on a Pi must not consume the test deadline.
+            clock = [0.0]
+            def read_after(unused):
+                clock[0] += .005
+                return frame.copy(), clock[0]
+            camera.read_after.side_effect = read_after
+            motion = Mock()
+            motion.wait.side_effect = lambda seconds: clock.__setitem__(0, clock[0] + seconds)
             feedback_config = dict(held_roi=held_roi, placed_roi=placed_roi, camera_timeout=1,
                                    released=dict(mode='vision', timeout=.03, stable_samples=2))
-            feedback = TaskFeedback(feedback_config, config, camera, Mock(), self.detect)
-            self.assertEqual(feedback.confirm('released'), expected)
+            feedback = TaskFeedback(feedback_config, config, camera, motion, self.detect)
+            with patch('task_feedback.time.monotonic', side_effect=lambda: clock[0]):
+                self.assertEqual(feedback.confirm('released'), expected)
 
 
 if __name__ == '__main__':
