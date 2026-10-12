@@ -5,6 +5,27 @@ import unittest
 
 @unittest.skipIf(sys.version_info[0] < 3, 'Pi program requires Python 3')
 class HumanoidTests(unittest.TestCase):
+    def test_manual_start_enters_complete_route_after_stand_and_grab(self):
+        from unittest.mock import Mock, patch
+        motion,heartbeat,feedback=Mock(),Mock(),Mock()
+        feedback.confirm.return_value=True
+        config={'settle_seconds':.2}
+        with patch.object(self.module,'carry') as full_route:
+            self.module.manual_start_and_carry(config,motion,heartbeat,feedback)
+            full_route.assert_called_once_with(config,motion,heartbeat,feedback)
+        self.assertEqual([c[0][0] for c in motion.action.call_args_list],['stand','grab'])
+        feedback.confirm.assert_called_once_with('held')
+
+    def test_manual_start_failure_cannot_enter_complete_route(self):
+        from unittest.mock import Mock, patch
+        motion,heartbeat,feedback=Mock(),Mock(),Mock()
+        feedback.confirm.return_value=False
+        with patch.object(self.module,'carry') as full_route:
+            with self.assertRaises(RuntimeError):
+                self.module.manual_start_and_carry({'settle_seconds':.2},motion,heartbeat,feedback)
+            full_route.assert_not_called()
+        self.assertEqual([c[0][0] for c in motion.action.call_args_list],['stand','grab'])
+
     def test_head_pitch_keeps_current_pan_in_both_phases(self):
         import threading
         from unittest.mock import Mock

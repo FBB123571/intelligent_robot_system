@@ -344,6 +344,22 @@ def carry(config, motion, heartbeat, feedback):
     heartbeat.set('done')
 
 
+def manual_start_and_carry(config, motion, heartbeat, feedback):
+    """Operator positions block; stand/grab once, then the complete route."""
+    heartbeat.set('initializing')
+    motion.action('stand')
+    motion.wait(config['settle_seconds'])
+    heartbeat.set('grasping')
+    motion.action('grab')
+    motion.wait(config['settle_seconds'])
+    heartbeat.set('verifying_grasp')
+    if not feedback.confirm('held'):
+        heartbeat.set('grasp_failed')
+        raise RuntimeError('Manual-start grab not confirmed; reposition object before restarting')
+    heartbeat.set('grasp_success')
+    carry(config, motion, heartbeat, feedback)
+
+
 def grasp_and_carry(config, motion, heartbeat, approach, feedback):
     for attempt in range(1, config['grasp_attempts'] + 1):
         heartbeat.set('searching')
@@ -448,10 +464,17 @@ def main():
     with open(args.config, encoding='utf-8') as stream:
         config = yaml.safe_load(stream)
     validate_route(config)
+    startup_mode = config.get('startup_mode', 'automatic')
+    if startup_mode not in ('automatic', 'manual'):
+        parser.error('startup_mode must be automatic or manual')
+    if startup_mode == 'manual' and not config['actions'].get('stand'):
+        parser.error('manual startup requires actions.stand')
     if any(not isinstance(i, int) or not 1 <= i <= 16 for i in config.get('hold_arm_servos', [])):
         parser.error('hold_arm_servos must contain bus servo IDs 1..16')
     if args.check_actions:
         names = set(validate_route(config))
+        if startup_mode == 'manual':
+            names.add(config['actions']['stand'])
         if config['actions'].get('retry_reset'):
             names.add(config['actions']['retry_reset'])
         for name in sorted(names):
@@ -498,8 +521,11 @@ def main():
         motion.head()
         feedback_config = dict(config['feedback'], camera_timeout=config['camera_timeout'])
         feedback = TaskFeedback(feedback_config, config['vision'], camera, motion, detect, args.simulate)
-        approach = lambda: approach_object(config, motion, camera, heartbeat, args.debug, args.simulate)
-        grasp_and_carry(config, motion, heartbeat, approach, feedback)
+        if startup_mode == 'manual':
+            manual_start_and_carry(config, motion, heartbeat, feedback)
+        else:
+            approach = lambda: approach_object(config, motion, camera, heartbeat, args.debug, args.simulate)
+            grasp_and_carry(config, motion, heartbeat, approach, feedback)
         # Keep done heartbeat alive while Turtlebot finishes its trailing goal.
         if args.execute:
             print('Route done; keep this process running until all followers stop. Ctrl+C exits.')

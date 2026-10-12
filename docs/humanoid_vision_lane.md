@@ -1,5 +1,15 @@
 # 红色抓取与视觉道路居中
 
+## 完整路线的人工起步
+
+当前红色道路配置默认 `startup_mode: manual`。完整入口 competition.py 先执行 `/home/pi/TonyPi/ActionGroups/stand.d6a` 一次，再执行当前 grab 一次。机器人和物块的抓取位置由操作员事先摆好，程序跳过寻找、接近和抓取位置对齐；新鲜视觉确认持物后，进入完整路线：第一段居中 → 左转并对齐 → 第二段居中 → 右转并对齐 → 第三段居中 → 黄色雪糕筒停车确认 → 持物确认与放置 → 放置视觉确认。
+
+人工起步抓取未确认时直接停止，等待操作员重新摆放后启动，不自动重抓。这里没有短程测试的3次道路动作上限，完整路线仍有道路总超时、转向周期上限和视觉失效停止。要恢复原自动搜索/接近起步，可将 startup_mode 改为 automatic。旧蓝色示例未指定这个字段，仍保持原自动起步行为。
+
+启动命令仍为 `python3 humanoid/scripts/competition.py --config runtime/competition.local.yaml --execute --debug`，前提是完成正式路线所需标定；代码不会因为启用了人工起步而取消这些检查。--vision-only 依然只看画面，不站立、不抓取。--simulate 会包含 stand/grab，但后续仍演练固定参考路线，不代表真实道路视频验证。
+
+尚未更新的实机本机配置，需要补入 `startup_mode: manual` 和 `actions.stand: /home/pi/TonyPi/ActionGroups/stand`；不要给这个映射加 .d6a 扩展名，因为共享执行器会自行添加。机器人离线时无法写入该本机配置，须待连接恢复后部署。
+
 当前头部设置已按实际画面确认：PWM servo1 为 1200 微秒；servo2 保持当前值。配置 head.tilt、pickup_tilt、carry_tilt 均为 1200，head.preserve_pan=true，状态机不会发送 servo2 命令。本次按操作员明确指令实际发送了 servo1=1200，没有执行身体动作。道路挡板表面新增低饱和度要求，红色抱持物不能用其边缘替代灰色挡板；仍需用实际道路画面标定 held_roi 和可见道路区域。
 
 ## 按挡板场地视角更新
