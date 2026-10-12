@@ -38,6 +38,7 @@ def observe(frame, config, held_roi=None):
     import numpy as np
     image = cv2.resize(frame, (320, 240))
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    saturation = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)[:,:,1]
     edges = cv2.Canny(cv2.GaussianBlur(gray, (5, 5), 0), *config['canny'])
     roi = config['roi']
     selected = np.zeros_like(edges)
@@ -68,7 +69,10 @@ def observe(frame, config, held_roi=None):
         for t in (.2,.4,.6,.8):
             x=int(x0+t*dx); y=int(y0+t*dy)
             patch=gray[max(0,y-25):max(0,y-5),max(0,x-4):min(320,x+5)]
-            if patch.size: samples.append(float(patch.std()) <= config.get('panel_max_std',18))
+            sat = saturation[max(0,y-25):max(0,y-5),max(0,x-4):min(320,x+5)]
+            if patch.size:
+                samples.append(float(patch.std()) <= config.get('panel_max_std',18) and
+                               float(np.median(sat)) <= config.get('panel_max_saturation',65))
         return bool(samples) and sum(samples)/float(len(samples))>=.75
     near_y, far_y = config['near_y']*240, config['far_y']*240
     left, right, front = [], [], False

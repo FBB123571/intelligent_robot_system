@@ -5,6 +5,23 @@ import unittest
 
 @unittest.skipIf(sys.version_info[0] < 3, 'Pi program requires Python 3')
 class HumanoidTests(unittest.TestCase):
+    def test_head_pitch_keeps_current_pan_in_both_phases(self):
+        import threading
+        from unittest.mock import Mock
+        import competition
+        motion = competition.Motion.__new__(competition.Motion)
+        motion.config = {'head': {'pan':1500,'tilt':1200,'pan_id':2,'tilt_id':1,
+                                 'pickup_tilt':1200,'carry_tilt':1200,'preserve_pan':True}}
+        motion.stop = threading.Event()
+        motion.execute = True
+        motion.controller = Mock()
+        motion.wait = Mock()
+        for phase in ('pickup','carry'):
+            motion.controller.reset_mock()
+            motion.head_phase = phase
+            motion.head()
+            motion.controller.set_pwm_servo_pulse.assert_called_once_with(1,1200,500)
+
     def setUp(self):
         from pathlib import Path
         self.root = Path(__file__).resolve().parents[1]

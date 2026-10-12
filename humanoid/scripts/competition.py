@@ -164,9 +164,13 @@ class Motion(object):
         # Phase-specific pitch is calibrated in PWM microseconds, not bus units.
         phase = getattr(self, 'head_phase', 'pickup')
         head['tilt'] = head.get(phase + '_tilt', head['tilt'])
-        for servo, pulse in ((head['pan_id'], head['pan']), (head['tilt_id'], head['tilt'])):
+        commands = [(head['tilt_id'], head['tilt'])]
+        if not head.get('preserve_pan', False):
+            commands.insert(0, (head['pan_id'], head['pan']))
+        for servo, pulse in commands:
             if not 500 <= pulse <= 2500:
                 raise ValueError('PWM head pulse outside 500..2500')
+        for servo, pulse in commands:
             if self.controller:
                 self.controller.set_pwm_servo_pulse(servo, pulse, 500)
             else:

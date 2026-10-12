@@ -7,11 +7,12 @@ search_timeout: 60.0
 approach_action_limit: 80
 head:
   pan: 1500
-  tilt: 1500
+  tilt: 1200
   pan_id: 2
   tilt_id: 1
-  pickup_tilt: 1500
-  carry_tilt: 1500
+  pickup_tilt: 1200
+  carry_tilt: 1200
+  preserve_pan: true
 vision:
   target_color: red
   color_space: HSV
@@ -164,6 +165,7 @@ obstacle_guard:
       center_tolerance: 0.3
       stop_bottom: 0.65
     branch_gap_y: 0.06
+    panel_max_saturation: 65
   panel_stop_bottom: 0.85
   cone_stop_bottom: 0.92
 hold_arm_servos:
@@ -231,3 +233,4 @@ lane_following:
   endpoint_hold_seconds: 1.0
   cone: *id008
   branch_gap_y: 0.06
+  panel_max_saturation: 65

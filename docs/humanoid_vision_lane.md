@@ -1,5 +1,7 @@
 # 红色抓取与视觉道路居中
 
+当前头部设置已按实际画面确认：PWM servo1 为 1200 微秒；servo2 保持当前值。配置 head.tilt、pickup_tilt、carry_tilt 均为 1200，head.preserve_pan=true，状态机不会发送 servo2 命令。本次按操作员明确指令实际发送了 servo1=1200，没有执行身体动作。道路挡板表面新增低饱和度要求，红色抱持物不能用其边缘替代灰色挡板；仍需用实际道路画面标定 held_roi 和可见道路区域。
+
 ## 按挡板场地视角更新
 
 当前默认识别依据是灰色挡板下沿、竖向框架/支架及开口几何，终点模式改为 `yellow_cone`。地面胶带、黄黑条纹、地砖缝及其他地面标识不是路线、转角或终点识别标准。
@@ -33,12 +35,11 @@
 ```bash
 cd /home/pi/intelligent_robot_system
 # 打印指令，不动舵机：
-python3 humanoid/scripts/head_control.py --servo 1 --pulse 1550
+python3 humanoid/scripts/head_control.py --servo 1 --pulse 1200
 # 操作员观察方向，在中位附近小步测试，不要直接跳到量程端点：
-python3 humanoid/scripts/head_control.py --servo 1 --pulse 1550 --backend controller --execute
+python3 humanoid/scripts/head_control.py --servo 1 --pulse 1200 --backend controller --execute
 ```
 
-增加 PWM 是否让此机器更俯视需要实际观察，不能仅凭“pitch”名称判断。若 1550 抬头，则向 1450 方向小步试验。把最终值写入本机配置的 head.pickup_tilt 和 head.carry_tilt；本次仍保留 1500，部署时不自动改动实机头部。俯视后必须重新标定 held_roi、placed_roi、道路 ROI 和近远采样行。抱物和道路需同时可见；视线被物块遮挡时，程序等待/停止，不能凭旧画面继续前进。
 
 ## 调试与启用
 

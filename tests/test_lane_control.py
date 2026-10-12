@@ -116,3 +116,17 @@ class LaneTests(unittest.TestCase):
         for unused in range(self.lane['endpoint_stable_frames']-1):
             self.assertEqual(self.planner.decide(obs),'wait')
         self.assertEqual(self.planner.decide(obs),'done')
+
+    def test_red_held_object_cannot_replace_gray_panels(self):
+        try:
+            import cv2
+            import numpy as np
+        except ImportError: self.skipTest('OpenCV/numpy needed')
+        from lane_control import observe
+        image=np.full((240,320,3),100,np.uint8)
+        for vertices in ([[0,0],[130,0],[130,120],[50,220],[0,220]],
+                         [[190,0],[320,0],[320,220],[270,220],[190,120]]):
+            cv2.fillPoly(image,[np.array(vertices)],(0,0,220))
+        cv2.line(image,(50,220),(50,90),(20,20,20),3)
+        cv2.line(image,(270,220),(270,90),(20,20,20),3)
+        self.assertFalse(observe(image,self.lane)['valid'])
