@@ -1,5 +1,26 @@
 # TonyPi 实机连接与部署
 
+## 2026-10-12 新版控制板 TonyPi
+
+本次更换的设备仍为 `pi@192.168.149.1`，但系统是 Debian 12 / Python 3.11，官方 ActionGroupControl 使用 `ros_robot_controller_sdk.Board` 和 `Controller`，串口 `/dev/ttyAMA0`、1000000 波特率。它与下面 10 月 11 日的 legacy 设备不同；不能使用仓库旧默认配置直接执行动作。登录密码不保存在仓库。
+
+完整 main 仓库部署到 `/home/pi/intelligent_robot_system`，9 个归档网页动作恢复到 `/home/pi/tonypi_web_control/actions`，原始/候选/参考动作复制到原装 ActionGroups 并备份覆盖前文件。备份路径为 `runtime/migration-backup-20261012`，SHA256 与 SQLite 完整性记录为 `runtime/deployment-report.json`。原装 SDK 和舵机校准文件保留；初始 stand 使用此新机器原装文件。旧机器人未提交的文件、配置与网页控制服务源码不包含在 GitHub 恢复范围。
+
+三个本机配置 `runtime/open_loop.local.yaml`、`runtime/competition.local.yaml`、`runtime/joints.local.yaml` 均选择 `hardware_backend: controller`，闭环标定和关节映射确认仍保持未验证。
+
+```bash
+cd /home/pi/intelligent_robot_system
+python3 humanoid/scripts/open_loop.py --config runtime/open_loop.local.yaml --check-actions
+python3 humanoid/scripts/competition.py --config runtime/competition.local.yaml --check-actions
+python3 humanoid/scripts/competition.py --config runtime/competition.local.yaml --simulate
+# VNC 桌面中预览相机，只有视觉，无动作：
+python3 humanoid/scripts/competition.py --config runtime/competition.local.yaml --vision-only --debug
+# 操作员准备好后手动执行原定开环流程：
+python3 humanoid/scripts/open_loop.py --config runtime/open_loop.local.yaml --execute
+```
+
+本机配置不提交 Git。以后更新共享代码时继续使用这些配置，避免旧 legacy 默认值覆盖本机接口选择。部署检查不执行真实动作；当前官方 Joystick 和多机控制服务存在，实机运行前需确认其没有同时控制舵机。
+
 ## 2026-10-11 更换 TonyPi 后的部署
 
 新机器仍使用 `pi@192.168.149.1`，外接网卡连接其热点 `HW-80F815E4`。已从 GitHub main 部署完整仓库到 `/home/pi/intelligent_robot_system`，保留 Git 历史及 GitHub origin；通过 PC 转发 Git bundle，无需机器人访问外网。
