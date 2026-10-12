@@ -16,7 +16,7 @@ def render_frame(frame, boxes, config, state, action='', info=''):
         right, bottom = int((x + w) * width), int((y + h) * height)
         cv2.rectangle(display, (left, top), (right, bottom), (255, 180, 0), 2)
         cv2.circle(display, ((left + right) // 2, (top + bottom) // 2), 3, (255, 180, 0), -1)
-        text('BLUE target area=%.3f' % box['area'], left, max(12, top - 5), (255, 180, 0))
+        text('%s target area=%.3f' % (config['vision'].get('target_color', 'target').upper(), box['area']), left, max(12, top - 5), (255, 180, 0))
     rois = [('held', config['feedback'].get('held_roi'), (0, 255, 0)),
             ('placed', config['feedback'].get('placed_roi'), (0, 255, 255)),
             ('corridor', config['obstacle_guard'].get('roi'), (0, 0, 255)),
@@ -28,6 +28,12 @@ def render_frame(frame, boxes, config, state, action='', info=''):
             cv2.rectangle(display, (left, top), (int(x1 * width), int(y1 * height)), color, 1)
             text(name, left, min(height - 4, top + 14), color)
     vision = config['vision']
+    if config.get('lane_following', {}).get('enabled'):
+        from lane_control import observe
+        lane = observe(frame, config['lane_following'], config['feedback'].get('held_roi'))
+        for x0, y0, x1, y1 in lane['boundaries']:
+            cv2.line(display, (int(x0*width), int(y0*height)), (int(x1*width), int(y1*height)), (0, 255, 255), 2)
+        text('LANE valid=%s front=%s error=%s' % (lane['valid'], lane['front'], lane.get('error')), 5, height-12)
     center = int(vision['center_x'] * width)
     cv2.line(display, (center, 120), (center, height - 1), (255, 255, 255), 1)
     grab_y = int(vision['grab_bottom'] * height)
@@ -92,7 +98,7 @@ class DebugView:
                                getattr(self.motion, 'current_action', ''), info)
         cv2 = self.camera.cv2
         cv2.imshow(self.WINDOW, display)
-        cv2.imshow('TonyPi blue mask', mask)
+        cv2.imshow('TonyPi target mask', mask)
         if not self.callback_ready:
             cv2.setMouseCallback(self.WINDOW, self.click)
             self.callback_ready = True

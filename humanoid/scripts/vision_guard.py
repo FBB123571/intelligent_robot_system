@@ -1,6 +1,7 @@
 """Monocular floor-appearance guard. Detects image occupancy, not metric range."""
 import time
 from task_feedback import CollisionBlocked
+from color_mask import threshold
 
 
 def floor_obstacle(frame, config, blue, held_roi, phase):
@@ -25,8 +26,7 @@ def floor_obstacle(frame, config, blue, held_roi, phase):
                                   'retry_reset', 'release', 'head'):
         space = blue.get('color_space', 'HSV').upper()
         converted = hsv if space == 'HSV' else cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
-        target = cv2.inRange(converted, np.array(blue['lower_' + space.lower()], dtype=np.uint8),
-                             np.array(blue['upper_' + space.lower()], dtype=np.uint8))
+        target = threshold(converted, blue)
         allowed = np.zeros_like(selected)
         allowed[rectangle(interaction)] = target[rectangle(interaction)]
         unknown[allowed > 0] = 0

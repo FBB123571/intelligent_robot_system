@@ -26,6 +26,8 @@ from competition_core.mission import Approach, validate_route
 from task_feedback import DistanceGuard, TaskFeedback, validate_feedback
 from vision_guard import VisionGuard, floor_obstacle
 from debug_view import DebugView
+from color_mask import threshold
+import lane_control
 
 
 class Stopped(RuntimeError):
@@ -158,7 +160,10 @@ class Motion(object):
         self.check_safety()
         if not self.execute:
             return
-        head = self.config['head']
+        head = dict(self.config['head'])
+        # Phase-specific pitch is calibrated in PWM microseconds, not bus units.
+        phase = getattr(self, 'head_phase', 'pickup')
+        head['tilt'] = head.get(phase + '_tilt', head['tilt'])
         for servo, pulse in ((head['pan_id'], head['pan']), (head['tilt_id'], head['tilt'])):
             if not 500 <= pulse <= 2500:
                 raise ValueError('PWM head pulse outside 500..2500')
@@ -258,8 +263,7 @@ def detect_details(frame, config):
     converted = cv2.cvtColor(cv2.GaussianBlur(image, (3, 3), 0),
                              cv2.COLOR_BGR2HSV if space == 'HSV' else cv2.COLOR_BGR2LAB)
     suffix = space.lower()
-    mask = cv2.inRange(converted, np.array(config['lower_' + suffix], dtype=np.uint8),
-                      np.array(config['upper_' + suffix], dtype=np.uint8))
+    mask = threshold(converted, config)
     kernel = np.ones((3, 3), dtype=np.uint8)
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
@@ -294,7 +298,13 @@ def check_hold(config):
 
 def carry(config, motion, heartbeat, feedback):
     heartbeat.set('carrying')
-    for step in config['route']:
+    lane = config.get('lane_following', {})
+    endpoint_confirmed = False
+    if lane.get('enabled') and not getattr(feedback, 'simulate', False):
+        motion.head_phase = 'carry'
+        motion.head()
+        endpoint_confirmed = lane_control.run(lane, motion, feedback, heartbeat)
+    for step in ([] if lane.get('enabled') and not getattr(feedback, 'simulate', False) else config['route']):
         if step['kind'] == 'wait':
             remaining = float(step['seconds'])
             while remaining > 0:
@@ -314,7 +324,7 @@ def carry(config, motion, heartbeat, feedback):
                     heartbeat.set('carrying')
     check_hold(config)
     heartbeat.set('checking_placement')
-    if not feedback.confirm('placement_ready'):
+    if not (endpoint_confirmed and lane.get('release_at_endpoint', False)) and not feedback.confirm('placement_ready'):
         raise RuntimeError('Placement area not confirmed; keep object held')
     heartbeat.set('checking_hold')
     if not feedback.confirm('held'):
@@ -405,7 +415,7 @@ def preview_vision(config, motion, camera, debug):
         last = stamp
         observation, mask = detect(frame, config['vision'])
         if stamp - printed > .5:
-            print('[blue observation x,bottom,area]', observation)
+            print('[%s observation x,bottom,area]' % config['vision'].get('target_color', 'target'), observation)
             guard = config['obstacle_guard']
             if guard.get('mode') == 'vision' and isinstance(guard.get('roi'), list):
                 try:
@@ -423,7 +433,7 @@ def main():
     parser.add_argument('--execute', action='store_true', help='send servo commands after calibration checks')
     parser.add_argument('--simulate', action='store_true', help='synthetic vision and printed route, no camera/hardware')
     parser.add_argument('--debug', action='store_true')
-    parser.add_argument('--vision-only', action='store_true', help='preview blue recognition without running actions')
+    parser.add_argument('--vision-only', action='store_true', help='preview target and corridor recognition without running actions')
     parser.add_argument('--check-actions', action='store_true', help='validate configured Pi action files without importing hardware SDK')
     args = parser.parse_args()
     if args.vision_only and (args.execute or args.simulate):
@@ -449,6 +459,8 @@ def main():
     if args.execute:
         try:
             validate_feedback(config)
+            if config.get('lane_following', {}).get('enabled'):
+                lane_control.validate(config['lane_following'])
             if config['obstacle_guard'].get('mode', 'distance') == 'distance':
                 DistanceGuard(config['obstacle_guard']).check()
         except (ValueError, RuntimeError) as exc:

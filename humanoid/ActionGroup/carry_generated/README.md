@@ -4,8 +4,8 @@
 
 | 生成文件 | 新机器人原装下半身源动作 | 帧数 | 原帧时长总计 |
 |---|---|---|---|
-| grab_go_forward.d6a | go_forward.d6a | 10 | 0.50 秒 |
-| grab_go_forward_fast.d6a（当前前进） | go_forward_fast.d6a | 10 | 0.45 秒 |
+| grab_go_forward.d6a（当前前进） | go_forward.d6a | 10 | 0.50 秒 |
+| grab_go_forward_fast.d6a（保留备选） | go_forward_fast.d6a | 10 | 0.45 秒 |
 | grab_turn_left.d6a | turn_left_fast.d6a | 5 | 0.90 秒 |
 | grab_turn_right.d6a | turn_right_fast.d6a | 5 | 0.90 秒 |
 

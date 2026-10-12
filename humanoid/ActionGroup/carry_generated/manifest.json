@@ -55,5 +55,5 @@
     "turn_right_fast.d6a": "8ee5ecc0b0f4adc4ea6619687117a410e0a174e6590cae61c214ab4cbe148f53",
     "go_forward_fast.d6a": "272fc1c91e0b36c736418055aa73a3319cba8376272a455dd33a84057ef31ce3"
   },
-  "active_forward": "grab_go_forward_fast.d6a"
+  "active_forward": "grab_go_forward.d6a"
 }
