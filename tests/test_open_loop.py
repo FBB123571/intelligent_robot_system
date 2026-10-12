@@ -20,7 +20,7 @@ class OpenLoopTests(unittest.TestCase):
         shared = open_loop.motion_config(config)
         self.assertEqual(shared['hold_arm_servos'], [])
         self.assertFalse(shared['obstacle_guard']['enabled'])
-        self.assertEqual(shared['actions']['forward'], '/home/pi/tonypi_web_control/action/grab_go_forward')
+        self.assertEqual(shared['actions']['forward'], '/home/pi/tonypi_web_control/action/grab_go_forward_fast')
         self.assertEqual(shared['actions']['left'], '/home/pi/tonypi_web_control/action/grab_turn_left')
         self.assertEqual(shared['actions']['right'], '/home/pi/tonypi_web_control/action/grab_turn_right')
         self.assertEqual(shared['actions']['grab'], '/home/pi/tonypi_web_control/actions/grab')

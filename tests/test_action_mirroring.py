@@ -54,7 +54,7 @@ class MirrorTests(unittest.TestCase):
     def test_eighteen_channel_gait_with_sixteen_channel_grab(self):
         source_dir = self.root / 'humanoid/ActionGroup/carry_gait_sources_20261012'
         grab = self.tool.action_frames(source_dir / 'grab.d6a')
-        for name in ('go_forward', 'turn_left_fast', 'turn_right_fast'):
+        for name in ('go_forward', 'go_forward_fast', 'turn_left_fast', 'turn_right_fast'):
             source = self.tool.action_frames(source_dir / (name + '.d6a'))
             result = self.tool.compose_carry_turn(source, grab, entry_ms=0)
             self.assertEqual(len(result), len(source))

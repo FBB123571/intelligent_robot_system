@@ -39,12 +39,21 @@
       "frames": 5,
       "duration_ms": 900,
       "sha256": "18d16055375cc1c054ec8848a6b4d2490a1a334a1edd3fb655863cea679159e1"
+    },
+    {
+      "source": "go_forward_fast.d6a",
+      "output": "grab_go_forward_fast.d6a",
+      "frames": 10,
+      "duration_ms": 450,
+      "sha256": "d70dddad83f12cf56ccc3c60daa1f1cd210d42d87aa682005616245ab589b8ec"
     }
   ],
   "source_sha256": {
     "go_forward.d6a": "cacbd778289beb672d419d5e9f1c3b57a428ea9657705279c811e7881f1a4784",
     "grab.d6a": "2c5ffc3bd29447bfe45d4c67e7ebf47dafb0449019378b24f2835dda0d11bf91",
     "turn_left_fast.d6a": "74049e31a24a872e427825e478ef091a93ddead5d559d1b119287ba4a64b1541",
-    "turn_right_fast.d6a": "8ee5ecc0b0f4adc4ea6619687117a410e0a174e6590cae61c214ab4cbe148f53"
-  }
+    "turn_right_fast.d6a": "8ee5ecc0b0f4adc4ea6619687117a410e0a174e6590cae61c214ab4cbe148f53",
+    "go_forward_fast.d6a": "272fc1c91e0b36c736418055aa73a3319cba8376272a455dd33a84057ef31ce3"
+  },
+  "active_forward": "grab_go_forward_fast.d6a"
 }
