@@ -1,0 +1,73 @@
+{
+  "offsets": {
+    "4": -20,
+    "12": 20
+  },
+  "validated_on_hardware": false,
+  "files": [
+    {
+      "source": "humanoid/ActionGroup/carry_gait_sources_20261012/grab.d6a",
+      "output": "grab_offset.d6a",
+      "frames": 6,
+      "duration_ms": 5400,
+      "source_sha256": "2c5ffc3bd29447bfe45d4c67e7ebf47dafb0449019378b24f2835dda0d11bf91",
+      "output_sha256": "8f9296881f0bf1e9c005e2778d85b2f53d74903e9aaf546fda630371b64c5aaa"
+    },
+    {
+      "source": "humanoid/ActionGroup/carry_generated/grab_go_forward.d6a",
+      "output": "grab_go_forward_offset.d6a",
+      "frames": 10,
+      "duration_ms": 500,
+      "source_sha256": "bd20e288a00cea0a81ae5f59fe980d2442c580853a4352267d30886dbd5a978b",
+      "output_sha256": "2b5da1e9c90b57d6c8c0c14793da7195059c7a132f687d4d5c6bcd4ddac0ce58"
+    },
+    {
+      "source": "humanoid/ActionGroup/carry_generated/grab_go_forward_fast.d6a",
+      "output": "grab_go_forward_fast_offset.d6a",
+      "frames": 10,
+      "duration_ms": 450,
+      "source_sha256": "d70dddad83f12cf56ccc3c60daa1f1cd210d42d87aa682005616245ab589b8ec",
+      "output_sha256": "4eb4d59ab3339dcb17837ca7c34c9bb5771971f782738a0e5759d3edbb2eaf56"
+    },
+    {
+      "source": "humanoid/ActionGroup/carry_generated/grab_turn_left.d6a",
+      "output": "grab_turn_left_offset.d6a",
+      "frames": 5,
+      "duration_ms": 900,
+      "source_sha256": "9bfd09b2a759daae128da2050e4646c00d927620755a6f46a9fea9012d9cb644",
+      "output_sha256": "dd50dcbce3aac0dadef6eb7728199f91bf740b3f1575ffb1957ca67fcd4c989f"
+    },
+    {
+      "source": "humanoid/ActionGroup/carry_generated/grab_turn_right.d6a",
+      "output": "grab_turn_right_offset.d6a",
+      "frames": 5,
+      "duration_ms": 900,
+      "source_sha256": "18d16055375cc1c054ec8848a6b4d2490a1a334a1edd3fb655863cea679159e1",
+      "output_sha256": "57b7151e58d929d1d29f025dee63f316fcc1a6ce5c6b5ab6211c58e60926fcb6"
+    },
+    {
+      "source": "humanoid/ActionGroup/web_control_reference/release.d6a",
+      "output": "release_offset.d6a",
+      "frames": 7,
+      "duration_ms": 5850,
+      "source_sha256": "03a685289091946ceeb006835bef643605826801b23ab3293b2a87e91dbead45",
+      "output_sha256": "fcaae6f37c902f6e941d4b205484faba1a2f45f23b758d55271ac7cdb30ecfdb"
+    },
+    {
+      "source": "humanoid/ActionGroup/put_down.d6a",
+      "output": "put_down_offset.d6a",
+      "frames": 9,
+      "duration_ms": 7100,
+      "source_sha256": "4e6ea3bcc9ca4d15dbe3cccf773a375c18e2bb643b3f4484ab9299a5063eab62",
+      "output_sha256": "83db15231c15643d8aff6c3c1d3b4f1f276cfff6a5e45f4f20ba06acb792b537"
+    },
+    {
+      "source": "humanoid/ActionGroup/candidates/grab_release.d6a",
+      "output": "grab_release_offset.d6a",
+      "frames": 5,
+      "duration_ms": 4800,
+      "source_sha256": "1424ff789f83b6e9efe7d81b8e7f9e8cfd1afd24696c94ee8ee16451409d1b0d",
+      "output_sha256": "eddd4afd4a3a0fe100c5d84272306ea6af15083690c4777167ef47c88ec7ad18"
+    }
+  ]
+}
