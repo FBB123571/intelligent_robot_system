@@ -8,6 +8,20 @@ import lane_trial
 
 
 class TrialTests(unittest.TestCase):
+    def test_startup_stands_then_grabs_without_visual_approach(self):
+        motion,heartbeat,feedback=Mock(),Mock(),Mock()
+        feedback.confirm.return_value=True
+        lane_trial.startup({'settle_seconds':.2},motion,heartbeat,feedback)
+        self.assertEqual([c[0][0] for c in motion.action.call_args_list],['stand','grab'])
+        feedback.confirm.assert_called_once_with('held')
+
+    def test_failed_initial_grab_does_not_start_walking(self):
+        motion,heartbeat,feedback=Mock(),Mock(),Mock()
+        feedback.confirm.return_value=False
+        with self.assertRaises(RuntimeError):
+            lane_trial.startup({'settle_seconds':.2},motion,heartbeat,feedback)
+        self.assertEqual([c[0][0] for c in motion.action.call_args_list],['stand','grab'])
+
     def run_case(self,valid):
         import yaml
         config=yaml.safe_load((lane_trial.ROOT/'humanoid/config/lane_trial.yaml').read_text())

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bounded real corridor trial starting already loaded; no head/grab/release."""
+"""Manual object placement -> stand -> grab -> bounded visual corridor trial."""
 import argparse
 from pathlib import Path
 import signal
@@ -10,9 +10,24 @@ from competition import Camera, Motion, Heartbeat, Stopped, detect, detect_detai
 from debug_view import DebugView
 from lane_control import observe
 from task_feedback import roi_present
+from task_feedback import TaskFeedback
 from vision_guard import VisionGuard
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def startup(config, motion, heartbeat, feedback):
+    """No search/approach: the operator places the block at the grab position."""
+    heartbeat.set('initializing')
+    motion.action('stand')
+    motion.wait(config['settle_seconds'])
+    heartbeat.set('grasping')
+    motion.action('grab')
+    motion.wait(config['settle_seconds'])
+    heartbeat.set('verifying_grasp')
+    if not feedback.confirm('held'):
+        raise RuntimeError('Initial grab not visually confirmed; no walking')
+    heartbeat.set('grasp_success')
 
 
 def decision(observation, lane):
@@ -83,6 +98,7 @@ def main():
     p.add_argument('--debug',action='store_true')
     p.add_argument('--max-actions',type=int,default=3)
     p.add_argument('--timeout',type=float,default=20)
+    p.add_argument('--already-held',action='store_true',help='skip stand/grab only when deliberately starting already loaded')
     a=p.parse_args()
     if not 1<=a.max_actions<=10 or not 1<=a.timeout<=60: p.error('max-actions 1..10; timeout 1..60 seconds')
     import yaml
@@ -106,6 +122,10 @@ def main():
         deadline=time.monotonic()+config['camera_timeout']
         while camera.read_after(float('-inf'))[0] is None:
             if stop.wait(.02) or time.monotonic()>=deadline: raise RuntimeError('Camera unavailable')
+        if not a.already_held:
+            feedback=TaskFeedback(dict(config['feedback'],camera_timeout=config['camera_timeout']),
+                                  config['vision'],camera,motion,detect)
+            startup(config,motion,heartbeat,feedback)
         run_trial(config,camera,motion,heartbeat,a.max_actions,a.timeout)
     except Stopped:
         print('[trial] stopped by operator')

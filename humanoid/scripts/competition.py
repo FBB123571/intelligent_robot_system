@@ -92,6 +92,8 @@ class Motion(object):
         names = set(validate_route(config))
         if config['actions'].get('retry_reset'):
             names.add(config['actions']['retry_reset'])
+        if config['actions'].get('stand'):
+            names.add(config['actions']['stand'])
         for name in names:
             if execute:
                 self.frames[name] = action_frames(Path(config['action_dir']) / (name + '.d6a'))

@@ -51,6 +51,7 @@ actions:
   right: /home/pi/tonypi_web_control/action/grab_turn_right
   release: put_down
   retry_reset: grab_release
+  stand: /home/pi/TonyPi/ActionGroups/stand
 grasp_attempts: 3
 feedback:
   verify_carry: true
