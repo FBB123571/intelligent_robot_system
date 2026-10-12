@@ -9,9 +9,9 @@
 | hip4_minus20 | 原值−20 | 原值+20 |
 | hip4_plus20 | 原值+20 | 原值−20 |
 
-每套包含 grab、grab_go_forward、grab_go_forward_fast、grab_turn_left、grab_turn_right、release、put_down、grab_release，共8个文件。抓取源使用当前抱物步态对应的实际 grab 归档。原文件完整保留，运行配置未切换；两个 manifest 记录源/输出 SHA256、偏置、帧数与时长。程序越界即拒绝，不截断到量程边缘，也不重复叠加 *_offset 文件。
+每套包含 stand、grab、grab_go_forward、grab_go_forward_fast、grab_turn_left、grab_turn_right、release、put_down、grab_release、go_forward_one_small_step、left_move、right_move，共12个文件。抓取源使用当前抱物步态对应的实际 grab 归档，stand/接近/横移源自此次连接恢复后读取的原装文件。原文件完整保留，运行配置未切换；两个 manifest 记录源/输出 SHA256、偏置、帧数与时长。程序越界即拒绝，不截断到量程边缘，也不重复叠加 *_offset 文件。
 
-机器人目前离线，仓库没有这台机器 stand、接近及横移动作的独立归档，不能伪造这些动作的偏置版。连接恢复后，应对原装 stand 和所有实际配置引用的动作使用同一组偏置生成副本，使姿态衔接一致，再建立独立测试配置。不要直接让偏置 grab 与不同符号的步态混用。
+此次已补充这台机器 stand、接近及横移动作的原始归档，位于 ../hip_offset_sources_20261012。部署时两套副本位于 `/home/pi/tonypi_web_control/hip4_minus20` 和 `/home/pi/tonypi_web_control/hip4_plus20`；不要让偏置 grab 与不同符号的步态混用。下面的工具命令用于未来重新生成其他参数，不会自动执行。
 
 ## 在机器人上生成原装站立副本
 

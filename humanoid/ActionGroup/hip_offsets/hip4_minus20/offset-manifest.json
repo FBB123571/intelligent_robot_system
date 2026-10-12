@@ -68,6 +68,38 @@
       "duration_ms": 4800,
       "source_sha256": "1424ff789f83b6e9efe7d81b8e7f9e8cfd1afd24696c94ee8ee16451409d1b0d",
       "output_sha256": "eddd4afd4a3a0fe100c5d84272306ea6af15083690c4777167ef47c88ec7ad18"
+    },
+    {
+      "source": "humanoid/ActionGroup/hip_offset_sources_20261012/go_forward_one_small_step.d6a",
+      "output": "go_forward_one_small_step_offset.d6a",
+      "frames": 6,
+      "duration_ms": 1250,
+      "source_sha256": "abfee61b977d4f438f03fcc067ef68fbf9f61261382f78f8049313d45ee36e0e",
+      "output_sha256": "c264bd1bae1d43bd269f6cd2445734cc5fad8c3691f37d8d26e83a8d8868e6cc"
+    },
+    {
+      "source": "humanoid/ActionGroup/hip_offset_sources_20261012/left_move.d6a",
+      "output": "left_move_offset.d6a",
+      "frames": 6,
+      "duration_ms": 1300,
+      "source_sha256": "df76e832a198ccfbf7660051f88b84cd8b073e5ef218ba694c62fe265bdb04cc",
+      "output_sha256": "c542acdf6e0095c88f4dbd916e4437bcb26dc5ad72f6f4117a65d286899be8db"
+    },
+    {
+      "source": "humanoid/ActionGroup/hip_offset_sources_20261012/right_move.d6a",
+      "output": "right_move_offset.d6a",
+      "frames": 6,
+      "duration_ms": 1300,
+      "source_sha256": "db67a7d073b870ab640537ff645082db01fba4bd972ed050c8d24917eb62d919",
+      "output_sha256": "e96177fc2c49fc35383cadfbd47092ab79414c4a6ccea075a034b95ba51cba7d"
+    },
+    {
+      "source": "humanoid/ActionGroup/hip_offset_sources_20261012/stand.d6a",
+      "output": "stand_offset.d6a",
+      "frames": 1,
+      "duration_ms": 500,
+      "source_sha256": "9e2085930cd70da0c0c3cad4f6d29d755f65c774f344fcdb64a4877f71ebfb03",
+      "output_sha256": "83dedfd80bfcbab848b0a2438c5146dbe5ca55c872247a39a917b0b61e4d50fb"
     }
   ]
 }
