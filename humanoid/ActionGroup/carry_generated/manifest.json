@@ -1,0 +1,50 @@
+{
+  "date": "2026-10-12",
+  "arm_ids": [
+    6,
+    7,
+    8,
+    14,
+    15,
+    16
+  ],
+  "held_positions": {
+    "6": 574,
+    "7": 921,
+    "8": 477,
+    "14": 426,
+    "15": 79,
+    "16": 523
+  },
+  "entry_ms": 0,
+  "validated_on_hardware": false,
+  "files": [
+    {
+      "source": "go_forward.d6a",
+      "output": "grab_go_forward.d6a",
+      "frames": 10,
+      "duration_ms": 500,
+      "sha256": "bd20e288a00cea0a81ae5f59fe980d2442c580853a4352267d30886dbd5a978b"
+    },
+    {
+      "source": "turn_left_fast.d6a",
+      "output": "grab_turn_left.d6a",
+      "frames": 5,
+      "duration_ms": 900,
+      "sha256": "9bfd09b2a759daae128da2050e4646c00d927620755a6f46a9fea9012d9cb644"
+    },
+    {
+      "source": "turn_right_fast.d6a",
+      "output": "grab_turn_right.d6a",
+      "frames": 5,
+      "duration_ms": 900,
+      "sha256": "18d16055375cc1c054ec8848a6b4d2490a1a334a1edd3fb655863cea679159e1"
+    }
+  ],
+  "source_sha256": {
+    "go_forward.d6a": "cacbd778289beb672d419d5e9f1c3b57a428ea9657705279c811e7881f1a4784",
+    "grab.d6a": "2c5ffc3bd29447bfe45d4c67e7ebf47dafb0449019378b24f2835dda0d11bf91",
+    "turn_left_fast.d6a": "74049e31a24a872e427825e478ef091a93ddead5d559d1b119287ba4a64b1541",
+    "turn_right_fast.d6a": "8ee5ecc0b0f4adc4ea6619687117a410e0a174e6590cae61c214ab4cbe148f53"
+  }
+}

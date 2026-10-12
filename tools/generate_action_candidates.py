@@ -61,21 +61,27 @@ def compose_carry_turn(rows, grab_rows, entry_ms=600):
     An entry frame blends from the current pose to the turn's initial leg pose.
     This remains an unvalidated loaded gait, not a guarantee of balance/yaw.
     """
-    if not rows or not grab_rows or any(len(r) != len(grab_rows[-1]) for r in rows):
-        raise ValueError('Turn and grab must have matching channel counts')
-    if isinstance(entry_ms, bool) or not isinstance(entry_ms, int) or not 20 <= entry_ms <= 30000:
-        raise ValueError('entry_ms must be 20..30000')
+    if (not rows or not grab_rows or len(rows[0]) not in (18, 20) or
+            len(grab_rows[-1]) not in (18, 20) or any(len(r) != len(rows[0]) for r in rows)):
+        raise ValueError('Consistent 16/18-channel gait and grab frames required')
+    if (isinstance(entry_ms, bool) or not isinstance(entry_ms, int) or
+            not (entry_ms == 0 or 20 <= entry_ms <= 30000)):
+        raise ValueError('entry_ms must be 0 (omit entry) or 20..30000')
+    # If either source lacks 17/18, omit these unverified channels instead of
+    # inventing their held positions. The sixteen body channels remain intact.
+    width = min(len(rows[0]), len(grab_rows[-1]))
     last = grab_rows[-1]
-    held = [6, 7, 8, 14, 15, 16] + list(range(17, len(last) - 1))
+    held = [6, 7, 8, 14, 15, 16] + list(range(17, width - 1))
     output = []
     for row in rows:
-        new = list(row)
+        new = list(row[:width])
         for servo in held:
             new[servo + 1] = last[servo + 1]
         output.append(new)
-    entry = list(output[0])
-    entry[1] = entry_ms
-    output.insert(0, entry)
+    if entry_ms:
+        entry = list(output[0])
+        entry[1] = entry_ms
+        output.insert(0, entry)
     for index, row in enumerate(output, 1):
         row[0] = index
     return output
@@ -86,7 +92,7 @@ def main():
     parser.add_argument('--output-dir', default=str(ROOT / 'humanoid/ActionGroup/candidates'))
     parser.add_argument('--source', help='mirror this existing d6a instead of generating default candidates')
     parser.add_argument('--carry-pose', help='grab.d6a: compose source legs with its final arm pose instead of mirroring')
-    parser.add_argument('--entry-ms', type=int, default=600, help='composed turn entry transition duration')
+    parser.add_argument('--entry-ms', type=int, default=600, help='entry transition duration; 0 preserves gait timing without an extra frame')
     parser.add_argument('--output', help='new mirrored d6a path; never overwrites')
     parser.add_argument('--scope', choices=('legs', 'arms', 'body'), default='legs',
                         help='paired channels to mirror; default keeps carrying arms unchanged')
