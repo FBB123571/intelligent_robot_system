@@ -121,7 +121,8 @@ def main():
         # Wait for camera warm-up, with a bounded deadline, before checking guard.
         deadline=time.monotonic()+config['camera_timeout']
         while camera.read_after(float('-inf'))[0] is None:
-            if stop.wait(.02) or time.monotonic()>=deadline: raise RuntimeError('Camera unavailable')
+            if stop.wait(.02) or time.monotonic()>=deadline:
+                raise RuntimeError('Camera unavailable: '+getattr(camera.cam,'last_error','check device path and camera owner'))
         if not a.already_held:
             feedback=TaskFeedback(dict(config['feedback'],camera_timeout=config['camera_timeout']),
                                   config['vision'],camera,motion,detect)

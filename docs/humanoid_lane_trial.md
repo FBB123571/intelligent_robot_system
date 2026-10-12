@@ -1,5 +1,19 @@
 # 人工摆放、站立抓取后的真机短程闭环测试
 
+## HW-9EBBA609 相机共享输入
+
+此机器的 tonypi_web_control/server.py 网页服务占用 /dev/video0，并提供 `http://127.0.0.1:9040/api/camera` JPEG 图像。本机 competition.local.yaml 和 lane_trial.local.yaml 改用下面的输入，不再重复打开 USB 相机：
+
+```yaml
+camera:
+  type: http_snapshot
+  url: http://127.0.0.1:9040/api/camera
+  timeout: 0.8
+  max_fps: 10
+```
+
+接口关闭/503、不能解码或反复返回同一张 JPEG 时，不刷新摄像头帧时间；原有超时和持物/道路检查仍有效。网页摄像头服务应保持运行，但不要同时通过网页或其他上位机发送身体动作。USB 直读模式仍支持 auto/设备路径，只有相机没有其他占用进程时使用。
+
 入口为 `humanoid/scripts/lane_trial.py`，配置为 `runtime/lane_trial.local.yaml`。明确带 --execute 才发送实际身体指令。默认先执行原装 stand 一次，再直接执行 grab 一次，视觉确认已持物后进入短程道路居中。物块和机器人位置由操作员事先摆好，不执行搜索、接近或抓取位置自动对齐。抓取确认失败则停止，不盲目重抓或走路。不执行放置和整圈转角状态机，不移动头部，保持当前 servo1=1200 与 servo2 位置；抱物手臂固定在实际 grab 尾帧。没有把正式比赛配置的 hardware_calibrated/lane calibrated 改为 true。
 
 测试使用新鲜红块持物观察和挡板边界观察，每次道路决策连续稳定后仅执行一个周期，再重新识别。最多执行指定次数（默认3，最多10），超时默认20秒（最多60秒）。既没有可靠道路，也没有前进；前方挡板、相机失效、持物丢失或修正后横向偏差增大时停止。不是绕过缺失视觉的强制行走开关。

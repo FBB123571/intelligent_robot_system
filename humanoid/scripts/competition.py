@@ -220,7 +220,12 @@ class Camera(object):
         self.stop = stop
         self.lock = threading.Lock()
         self.frame, self.stamp = None, None
-        if source == 'auto':
+        if isinstance(source,dict):
+            if source.get('type')!='http_snapshot':
+                raise ValueError('Unsupported camera source type')
+            from snapshot_camera import SnapshotCapture
+            self.cam=SnapshotCapture(source,cv2)
+        elif source == 'auto':
             try:
                 module = importlib.import_module('hiwonder.Camera')
             except ImportError:
