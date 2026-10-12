@@ -7,6 +7,20 @@ from color_mask import threshold
 def floor_obstacle(frame, config, blue, held_roi, phase):
     import cv2
     import numpy as np
+    if config.get('panel_geometry'):
+        from lane_control import observe
+        observation=observe(frame,config['panel_geometry'],held_roi)
+        if observation['visible'] < config['min_visible_fraction']:
+            raise CollisionBlocked('Panel view obscured; no reliable corridor observation')
+        near=config.get('panel_stop_bottom',.85)
+        side_close=any(.28<x<.72 and y>=near for x,y in observation['posts'])
+        cone=observation.get('cone')
+        blocked=(observation['front_bottom']>=near or side_close or
+                 (cone is not None and cone['bottom']>=config.get('cone_stop_bottom',.92)))
+        # Floor colours, markings and floor-only edges do not trigger this guard.
+        mask=np.zeros((240,320),np.uint8)
+        for x,y in observation['posts']: cv2.circle(mask,(int(x*320),int(y*240)),4,255,-1)
+        return blocked, float(blocked), mask
     image = cv2.resize(frame, (320, 240))
     hsv = cv2.cvtColor(cv2.GaussianBlur(image, (3, 3), 0), cv2.COLOR_BGR2HSV)
     selected = np.zeros((240, 320), dtype=np.uint8)

@@ -97,6 +97,75 @@ obstacle_guard:
   max_age: 0.3
   stop_distance_m: 0.3
   poll_seconds: 0.05
+  panel_geometry:
+    enabled: true
+    calibrated: false
+    roi: &id001
+    - 0.05
+    - 0.35
+    - 0.95
+    - 0.95
+    canny: &id002
+    - 60
+    - 140
+    hough_votes: 30
+    min_line_pixels: 45
+    near_y: 0.88
+    far_y: 0.5
+    center_x: 0.5
+    center_tolerance: 0.07
+    heading_tolerance: 0.07
+    heading_gain: 0.8
+    width_range: &id003
+    - 0.25
+    - 0.95
+    front_y: &id004
+    - 0.35
+    - 0.98
+    front_span: 0.35
+    min_visible_fraction: 0.65
+    min_image_std: 3
+    stable_frames: 4
+    min_forward_cycles: 3
+    turns: &id005
+    - left
+    - right
+    turn_min_cycles: &id006
+      left: 3
+      right: 3
+    turn_max_cycles: &id007
+      left: 12
+      right: 12
+    endpoint_mode: yellow_cone
+    endpoint_min_forward_cycles: 3
+    endpoint_stable_frames: 8
+    release_at_endpoint: true
+    lost_timeout: 3.0
+    timeout: 180.0
+    settle_seconds: 0.2
+    require_panel_support: true
+    post_min_height: 30
+    post_base_radius: 14
+    panel_max_std: 18
+    endpoint_hold_seconds: 1.0
+    cone: &id008
+      lower_hsv:
+      - 18
+      - 100
+      - 70
+      upper_hsv:
+      - 40
+      - 255
+      - 255
+      min_area: 0.006
+      max_area: 0.3
+      min_height: 0.12
+      taper_ratio: 0.7
+      center_tolerance: 0.3
+      stop_bottom: 0.65
+    branch_gap_y: 0.06
+  panel_stop_bottom: 0.85
+  cone_stop_bottom: 0.92
 hold_arm_servos:
 - 6
 - 7
@@ -128,14 +197,8 @@ hold_sensor_timeout: 1.0
 lane_following:
   enabled: true
   calibrated: false
-  roi:
-  - 0.05
-  - 0.35
-  - 0.95
-  - 0.95
-  canny:
-  - 60
-  - 140
+  roi: *id001
+  canny: *id002
   hough_votes: 30
   min_line_pixels: 45
   near_y: 0.88
@@ -144,30 +207,27 @@ lane_following:
   center_tolerance: 0.07
   heading_tolerance: 0.07
   heading_gain: 0.8
-  width_range:
-  - 0.25
-  - 0.95
-  front_y:
-  - 0.45
-  - 0.8
+  width_range: *id003
+  front_y: *id004
   front_span: 0.35
   min_visible_fraction: 0.65
   min_image_std: 3
   stable_frames: 4
   min_forward_cycles: 3
-  turns:
-  - left
-  - right
-  turn_min_cycles:
-    left: 3
-    right: 3
-  turn_max_cycles:
-    left: 12
-    right: 12
-  endpoint_mode: boundaries_disappear
+  turns: *id005
+  turn_min_cycles: *id006
+  turn_max_cycles: *id007
+  endpoint_mode: yellow_cone
   endpoint_min_forward_cycles: 3
   endpoint_stable_frames: 8
   release_at_endpoint: true
   lost_timeout: 3.0
   timeout: 180.0
   settle_seconds: 0.2
+  require_panel_support: true
+  post_min_height: 30
+  post_base_radius: 14
+  panel_max_std: 18
+  endpoint_hold_seconds: 1.0
+  cone: *id008
+  branch_gap_y: 0.06

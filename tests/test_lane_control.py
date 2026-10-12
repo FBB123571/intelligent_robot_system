@@ -42,6 +42,7 @@ class LaneTests(unittest.TestCase):
         self.assertFalse(self.planner.turning)
 
     def test_lost_boundaries_only_end_after_both_turns_and_final_progress(self):
+        self.lane['endpoint_mode']='boundaries_disappear'  # optional legacy strategy
         empty = self.observation(valid=False, boundaries=[])
         for unused in range(10): self.assertNotEqual(self.planner.decide(empty), 'done')
         self.planner.stage = 2
@@ -73,7 +74,45 @@ class LaneTests(unittest.TestCase):
         image = np.full((240,320,3),100,np.uint8)
         cv2.line(image,(50,220),(130,120),(210,210,210),3)
         cv2.line(image,(270,220),(190,120),(210,210,210),3)
+        cv2.line(image,(50,220),(50,90),(30,30,30),3)
+        cv2.line(image,(270,220),(270,90),(30,30,30),3)
         result = observe(image,self.lane)
         self.assertTrue(result['valid'])
         self.assertAlmostEqual(result['error'],0,delta=.03)
         self.assertFalse(observe(np.full_like(image,100),self.lane)['valid'])
+
+    def test_floor_tape_cannot_supply_panel_or_cone_evidence(self):
+        try:
+            import cv2
+            import numpy as np
+        except ImportError: self.skipTest('OpenCV/numpy needed')
+        from lane_control import observe,cone_candidate
+        from vision_guard import floor_obstacle
+        image=np.full((240,320,3),150,np.uint8)
+        # Both floor-only seams and diagonal yellow/black tape are distractors.
+        cv2.line(image,(80,239),(130,105),(20,20,20),3)
+        cv2.line(image,(20,180),(300,180),(20,20,20),3)
+        for y in range(100,230,20):
+            x=140+(y-100)//2
+            cv2.line(image,(x,y),(x+10,y+18),(0,230,230) if y%40==20 else (10,10,10),10)
+        result=observe(image,self.lane)
+        self.assertFalse(result['valid'])
+        self.assertFalse(result['front'])
+        self.assertIsNone(cone_candidate(image,self.lane['cone']))
+        self.assertFalse(floor_obstacle(image,self.config['obstacle_guard'],self.config['vision'],None,'forward')[0])
+
+    def test_yellow_cone_shape_and_final_stage_gate(self):
+        try:
+            import cv2
+            import numpy as np
+        except ImportError: self.skipTest('OpenCV/numpy needed')
+        from lane_control import cone_candidate
+        image=np.full((240,320,3),120,np.uint8)
+        cv2.fillPoly(image,[np.array([[150,70],[170,70],[190,190],[130,190]])],(0,220,220))
+        cone=cone_candidate(image,self.lane['cone']); self.assertIsNotNone(cone)
+        obs=self.observation(cone=cone)
+        for unused in range(12): self.assertNotEqual(self.planner.decide(obs),'done')
+        self.planner.stage=2; self.planner.advance=3
+        for unused in range(self.lane['endpoint_stable_frames']-1):
+            self.assertEqual(self.planner.decide(obs),'wait')
+        self.assertEqual(self.planner.decide(obs),'done')

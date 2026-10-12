@@ -33,6 +33,10 @@ def render_frame(frame, boxes, config, state, action='', info=''):
         lane = observe(frame, config['lane_following'], config['feedback'].get('held_roi'))
         for x0, y0, x1, y1 in lane['boundaries']:
             cv2.line(display, (int(x0*width), int(y0*height)), (int(x1*width), int(y1*height)), (0, 255, 255), 2)
+        if lane.get('cone'):
+            x,y,w,h=lane['cone']['bbox']
+            cv2.rectangle(display,(int(x*width),int(y*height)),(int((x+w)*width),int((y+h)*height)),(0,255,255),2)
+            text('YELLOW CONE candidate bottom=%.2f'%lane['cone']['bottom'],int(x*width),max(12,int(y*height)-5),(0,255,255))
         text('LANE valid=%s front=%s error=%s' % (lane['valid'], lane['front'], lane.get('error')), 5, height-12)
     center = int(vision['center_x'] * width)
     cv2.line(display, (center, 120), (center, height - 1), (255, 255, 255), 1)
