@@ -6,7 +6,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build actual Kinetic package with archived distribution dependencies
-        run: docker build -f tools/ros-kinetic.Dockerfile -t rgbd-kinetic-check turtlebot/follow3/rgbd_following
+        run: docker build -f tools/ros-kinetic.Dockerfile -t rgbd-kinetic-check turtlebot/follow1/multi_robot_following
       - name: Exercise actual ROS transport, navigation, shadow output and loss stop
         run: docker run --rm -v "$PWD/.ros-test-results:/ws/build/test_results" rgbd-kinetic-check
       - uses: actions/upload-artifact@v4
@@ -37,7 +37,7 @@ jobs:
       - name: Check ROS adapter Python 2 syntax
         run: >-
           docker run --rm -v "$PWD:/work" -w /work python:2.7.18-buster
-          python -m compileall -q turtlebot/follow2/multi_robot_following/scripts turtlebot/follow3/rgbd_following
+          python -m compileall -q turtlebot/follow1/multi_robot_following/scripts
       - name: Test method 3 depth decisions with Kinetic Python version
         run: >-
           docker run --rm -v "$PWD:/work" -w /work python:2.7.18-buster
