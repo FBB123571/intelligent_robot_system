@@ -37,7 +37,7 @@
     <arg name="marker_id" value="$(arg marker_id)" />
     <arg name="follow_distance" value="$(arg follow_distance)" />
   </include>
-  <include if="$(arg start_ar_tracker)" file="$(find multi_robot_following)/launch/ar_tracker.launch">
+  <include if="$(arg start_ar_tracker)" file="$(find ar_marker_following)/launch/ar_tracker.launch">
     <arg name="robot_ns" value="$(arg robot_ns)" />
     <arg name="image_topic" value="$(arg image_topic)" />
     <arg name="info_topic" value="$(arg info_topic)" />
