@@ -1,0 +1,325 @@
+\documentclass[UTF8,a4paper,12pt]{ctexart}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{caption}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric}
+
+\geometry{left=2.5cm,right=2.5cm,top=2.5cm,bottom=2.5cm}
+\captionsetup{font=small}
+\sisetup{detect-all}
+\hypersetup{colorlinks=true,linkcolor=black,urlcolor=blue}
+
+\lstset{
+	basicstyle=\ttfamily\small,
+	keywordstyle=\color{blue!60!black},
+	commentstyle=\color{green!40!black},
+	stringstyle=\color{red!60!black},
+	numbers=left,
+	numberstyle=\tiny\color{gray},
+	frame=single,
+	breaklines=true,
+	tabsize=4,
+	showstringspaces=false
+}
+
+\title{实验：基于 AR 标记的 Turtlebot2 实时跟随与多机协同控制}
+\author{}
+\date{}
+
+\begin{document}
+	\maketitle
+
+	\section{实验目的}
+	本实验面向智能机器人多机协同任务，综合使用 Turtlebot2、Kinect RGB-D 相机、ROS Kinetic、\texttt{ar\_track\_alvar} 与速度门控节点，实现后车对前车背贴 AR 标记的实时跟随。实验目标如下：
+	\begin{enumerate}
+		\item 掌握 AR 标记识别节点的启动方法，理解标记 ID、实际尺寸和相机话题对识别结果的影响。
+		\item 设计基于 AR 标记相对位姿的实时跟随控制方法，使后车能够保持目标距离并对准前车。
+		\item 结合 GitHub 仓库中的 \texttt{multi\_robot\_following} 结构，理解标记观测、控制输出、任务状态和避障门控之间的关系。
+		\item 掌握通过 \texttt{target\_id} 或 \texttt{marker\_id} 切换跟随目标的方法，为多台 Turtlebot2 队列跟随提供参数配置依据。
+	\end{enumerate}
+
+	\section{实验任务与要求}
+	实验任务包括：在前车尾部粘贴指定 ID 的 ALVAR AR 标记；启动 Turtlebot2 底盘、Kinect 相机和 AR 识别节点；订阅 \texttt{/ar\_pose\_marker} 获取目标标记相对位姿；根据前后距离误差和左右偏差生成速度指令；通过速度门控限制危险速度并实现前方障碍停车；最后通过修改 \texttt{target\_id} 或 \texttt{marker\_id} 使机器人跟随不同编号的 AR 标记。
+
+	实验要求后车不能盲目运动；目标丢失、急停信号有效、扫描数据异常或前方距离过近时应停车。调试时应先单车低速验证，再扩展到多车队列。不同车辆应使用不同 ROS 命名空间和不同 TF 坐标系，避免话题和坐标冲突。
+
+	\section{实验仪器、设备及材料}
+	实验设备与软件环境如表~\ref{tab:devices} 所示。
+
+	\begin{table}[H]
+		\centering
+		\caption{实验设备与软件环境}
+		\label{tab:devices}
+		\begin{tabular}{ll}
+			\toprule
+			类别 & 内容 \\
+			\midrule
+			移动平台 & Turtlebot2 Kobuki 底盘，前车可为 TonyPi 或另一台 Turtlebot2 \\
+			视觉传感器 & Kinect RGB-D 相机，使用 RGB 图像和相机内参识别 AR 标记 \\
+			测距传感器 & 激光雷达或深度转换的 \texttt{/scan} 话题，用于前方避障 \\
+			软件环境 & Ubuntu 16.04，ROS Kinetic，Python 2.7 \\
+			ROS 包 & \texttt{ar\_track\_alvar}、\texttt{ar\_marker\_following}、\texttt{competition\_core}、\texttt{turtlebot\_bringup} \\
+			实验材料 & ALVAR AR 标签，建议边长 \SI{9}{cm} 至 \SI{14}{cm}，按实际打印尺寸设置参数 \\
+			\bottomrule
+		\end{tabular}
+	\end{table}
+
+	\section{实验原理}
+
+	\subsection{AR 标记位姿测量}
+	\texttt{ar\_track\_alvar} 通过相机图像和相机内参识别 ALVAR AR 标记，并在 \texttt{/ar\_pose\_marker} 话题上发布 \texttt{AlvarMarkers} 消息。每个标记包含编号 \texttt{id} 与位姿 \texttt{pose}。在相机光学坐标系下，通常可近似理解为：
+	\begin{equation}
+		z_m \text{ 表示标记前后距离}, \qquad x_m \text{ 表示标记左右偏差}.
+	\end{equation}
+	当目标标记贴在前车尾部时，后车只需识别该标记的相对位姿，就可以在不建图、不估计全局目标位置的情况下完成跟随。
+
+	\subsection{实时跟随控制律}
+	设期望跟随距离为 \(d_0\)，标记在机器人前方的实际距离为 \(d=z_m\)，横向偏差为 \(x=x_m\)。距离误差为
+	\begin{equation}
+		e_d=d-d_0.
+	\end{equation}
+	实验中采用比例控制生成线速度和角速度：
+	\begin{equation}
+		v=\mathrm{sat}(k_v e_d, v_{\max}), \qquad
+		\omega=\mathrm{sat}(-k_\omega x, \omega_{\max}).
+	\end{equation}
+	其中 \(\mathrm{sat}(\cdot)\) 为限幅函数。若相机光学坐标中 \(x>0\) 表示目标在画面右侧，则机器人应右转；ROS 中 \(\omega>0\) 为左转，因此角速度前取负号。若实机转向相反，只需将该符号反向。
+
+	\subsection{目标编号切换}
+	实测中若小车只能跟随 0 号 AR 标记，本质原因通常是程序默认参数为 \texttt{target\_id=0} 或 \texttt{marker\_id=0}。要跟随其他编号，只需确保两个条件同时满足：
+	\begin{enumerate}
+		\item 打印并粘贴的 AR 标签编号正确，例如需要跟随 1 号标签，则生成或使用 ID 为 1 的标签。
+		\item 跟随节点参数与标签编号一致，例如 \texttt{\_target\_id:=1} 或 \texttt{marker\_id:=1}。
+	\end{enumerate}
+	仓库中的直接 AR 跟随入口采用 \texttt{marker\_id} 参数；分享方案中的简化 Python 节点采用 \texttt{target\_id} 参数。两者含义一致，都是筛选 \texttt{/ar\_pose\_marker} 中指定编号的标记。
+
+	\subsection{速度门控与安全停车}
+	直接控制节点产生的速度先发布到 \texttt{cmd\_vel\_raw}，再由 \texttt{velocity\_gate.py} 检查任务状态、急停状态、扫描数据新鲜度和前方安全距离，最后输出到底盘速度输入。该设计使控制算法与安全保护分离。门控逻辑可概括为
+	\begin{equation}
+		u_{\mathrm{out}}=
+		\begin{cases}
+			u_{\mathrm{raw}}, & \text{运动许可有效且前方扫描安全},\\
+			0, & \text{目标丢失、急停、扫描异常或距离过近}.
+		\end{cases}
+	\end{equation}
+
+	\section{实验方案设计}
+	综合两个分享页和仓库代码，本实验采用图~\ref{fig:system} 所示的系统结构。
+
+	\begin{figure}[H]
+		\centering
+		\begin{tikzpicture}[
+			node distance=1.8cm and 1.6cm,
+			block/.style={draw, rounded corners=2pt, minimum width=3.0cm, minimum height=0.9cm, align=center},
+			smallblock/.style={draw, rounded corners=2pt, minimum width=2.5cm, minimum height=0.8cm, align=center},
+			arrow/.style={-{Latex[length=2.5mm]}, thick}
+		]
+			\node[block] (front) {前车\\背贴 AR 标记};
+			\node[block, right=of front] (camera) {Kinect RGB 图像\\CameraInfo};
+			\node[block, right=of camera] (alvar) {\texttt{ar\_track\_alvar}\\发布 \texttt{/ar\_pose\_marker}};
+			\node[block, below=of alvar] (follower) {AR 跟随控制\\筛选 \texttt{marker\_id}};
+			\node[block, left=of follower] (gate) {速度门控\\扫描/急停/任务状态};
+			\node[block, left=of gate] (base) {Turtlebot2 底盘\\执行速度};
+			\node[smallblock, below=of gate] (scan) {\texttt{/scan}\\前方障碍};
+			\node[smallblock, below=of follower] (mission) {\texttt{/competition/mission}\\\texttt{/competition/estop}};
+
+			\draw[arrow] (front) -- (camera);
+			\draw[arrow] (camera) -- (alvar);
+			\draw[arrow] (alvar) -- (follower);
+			\draw[arrow] (follower) -- node[above] {\texttt{cmd\_vel\_raw}} (gate);
+			\draw[arrow] (gate) -- node[above] {安全速度} (base);
+			\draw[arrow] (scan) -- (gate);
+			\draw[arrow] (mission) -- (gate);
+		\end{tikzpicture}
+		\caption{基于 AR 标记的实时跟随系统结构}
+		\label{fig:system}
+	\end{figure}
+
+	\section{实验步骤}
+
+	\subsection{AR 标签准备}
+	使用 \texttt{ar\_track\_alvar} 生成指定编号的标记，例如生成 1 号、边长 \SI{14}{cm} 的标记：
+	\begin{lstlisting}[language=bash]
+rosrun ar_track_alvar createMarker -s 14 1
+	\end{lstlisting}
+	打印时应保持实际尺寸，不要缩放。标记应贴在前车尾部或朝向后车的平面上，并尽量与 Kinect 相机处于相近高度。若标签实际边长为 \SI{9}{cm}，启动识别节点时必须将 \texttt{marker\_size\_cm} 设为 9.0。
+
+	\subsection{启动底盘与相机}
+	单车调试时先启动 Turtlebot2 底盘和 Kinect：
+	\begin{lstlisting}[language=bash]
+roslaunch turtlebot_bringup minimal.launch
+roslaunch openni_launch openni.launch
+rosrun image_view image_view image:=/camera/rgb/image_color
+	\end{lstlisting}
+	确认相机画面正常后，再启动 AR 识别和跟随节点。
+
+	\subsection{启动 AR 识别节点}
+	仓库中 \texttt{ar\_tracker.launch} 的关键参数如下：
+	\begin{lstlisting}[language=XML]
+<arg name="marker_size_cm" default="9.0" />
+<arg name="image_topic" default="/$(arg robot_ns)/camera/rgb/image_raw" />
+<arg name="info_topic" default="/$(arg robot_ns)/camera/rgb/camera_info" />
+<node pkg="ar_track_alvar" type="individualMarkersNoKinect"
+      name="ar_tracker" output="screen">
+  <param name="marker_size" value="$(arg marker_size_cm)" type="double" />
+  <remap from="camera_image" to="$(arg image_topic)" />
+  <remap from="camera_info" to="$(arg info_topic)" />
+</node>
+	\end{lstlisting}
+	若课程环境中的 RGB 图像话题为 \texttt{/camera/rgb/image\_color}，需要相应修改 \texttt{image\_topic}。启动后使用
+	\begin{lstlisting}[language=bash]
+rostopic echo /ar_pose_marker
+	\end{lstlisting}
+	检查消息中是否出现目标 \texttt{id}，并观察 \texttt{pose.position.x} 和 \texttt{pose.position.z} 是否随标记移动而变化。
+
+	\subsection{启动直接 AR 跟随}
+	仓库中的 \texttt{follow\_marker.launch} 将 \texttt{marker\_follower.py} 与 \texttt{velocity\_gate.py} 组合起来，关键参数如下：
+	\begin{lstlisting}[language=XML]
+<arg name="marker_id" default="1" />
+<arg name="follow_distance" default="1.0" />
+<node pkg="ar_marker_following" type="marker_follower.py"
+      name="marker_follower" output="screen">
+  <param name="marker_id" value="$(arg marker_id)" />
+  <param name="follow_distance" value="$(arg follow_distance)" />
+</node>
+<node pkg="ar_marker_following" type="velocity_gate.py"
+      name="velocity_gate" output="screen" />
+	\end{lstlisting}
+	因此，跟随 1 号标记可运行：
+	\begin{lstlisting}[language=bash]
+roslaunch ar_marker_following follow_marker.launch \
+  robot_ns:=tb1 marker_id:=1 follow_distance:=1.0
+	\end{lstlisting}
+	如果采用分享方案中的独立 \texttt{follow\_ar.py} 节点，也可通过如下命令临时指定编号：
+	\begin{lstlisting}[language=bash]
+rosrun ar_follower follow_ar.py _target_id:=1 _target_dist:=1.0
+	\end{lstlisting}
+
+	\section{核心程序分析}
+
+	\subsection{目标筛选}
+	无论采用 \texttt{marker\_id} 还是 \texttt{target\_id}，程序都需要在 \texttt{AlvarMarkers} 数组中筛选指定编号：
+	\begin{lstlisting}[language=Python]
+for marker in msg.markers:
+    if marker.id != self.id:
+        continue
+    pose = marker.pose
+    # 后续将目标位姿变换到 base_frame 或直接取相机坐标
+	\end{lstlisting}
+	这一部分解释了为什么默认只能跟随 0 号或 1 号标记：程序只会处理与参数相等的标记。要更换目标编号，不需要修改控制算法，只需修改启动参数或 launch 文件。
+
+	\subsection{距离与角度控制}
+	仓库的 \texttt{marker\_follower.py} 将标记位姿变换到 \texttt{base\_footprint} 后，用 \(x\) 表示前向距离、\(y\) 表示横向偏差，并计算目标角度：
+	\begin{lstlisting}[language=Python]
+x, y = self.target
+angle = math.atan2(y, x)
+if x > self.gap and abs(angle) < 0.4:
+    out.linear.x = min(0.12, 0.4 * (x - self.gap))
+out.angular.z = clamp(1.2 * angle, 0.45) if x > 0.65 else 0.0
+	\end{lstlisting}
+	这与分享方案中使用相机坐标 \(z\) 控制距离、\(x\) 控制转向的思想一致。区别在于仓库版本先通过 TF 将位姿统一到车体坐标系，因而多机扩展和安全检查更规范。
+
+	\subsection{门控保护}
+	\texttt{velocity\_gate.py} 限制最大线速度和角速度，并在急停、运动许可过期、速度指令过期、扫描不安全时输出零速度。其安全逻辑可整理为表~\ref{tab:safety}。
+
+	\begin{table}[H]
+		\centering
+		\caption{速度门控停车条件}
+		\label{tab:safety}
+		\begin{tabular}{ll}
+			\toprule
+			停车条件 & 作用 \\
+			\midrule
+			\texttt{/competition/estop} 为真 & 全队 Turtlebot 急停 \\
+			\texttt{motion\_allowed} 过期或为假 & 目标丢失、任务未开始或控制节点异常时停车 \\
+			\texttt{cmd\_vel\_raw} 过期 & 防止使用陈旧速度继续运动 \\
+			扫描数据缺失或过期 & 传感器异常时保守停车 \\
+			前方扇区不满足安全距离 & 避免撞上前车或障碍物 \\
+			速度非有限数或倒车指令 & 避免无效控制和盲目倒车 \\
+			\bottomrule
+		\end{tabular}
+	\end{table}
+
+	\section{实验结果}
+
+	\subsection{单标记识别结果}
+	启动相机与 AR 识别节点后，将目标标签放入视野内，\texttt{/ar\_pose\_marker} 中可以观察到对应 \texttt{id}。当标签左右移动时，横向坐标变化；当前车远离或靠近时，深度方向坐标变化。说明相机能够输出用于闭环跟随的相对位姿信息。
+
+	若 \texttt{rostopic echo /ar\_pose\_marker} 没有目标编号，常见原因包括：标签尺寸参数与实际打印尺寸不一致、图像话题名称错误、标签反光或遮挡、标签不是 ALVAR 格式，或者 \texttt{marker\_id} 与实际打印 ID 不一致。
+
+	\subsection{目标编号切换结果}
+	按照分享页给出的调试方法，将跟随目标从 0 号切换到 1 号时，只需完成表~\ref{tab:id} 中的对应修改。
+
+	\begin{table}[H]
+		\centering
+		\caption{AR 目标编号切换方法}
+		\label{tab:id}
+		\begin{tabular}{lll}
+			\toprule
+			目标编号 & 标签准备 & 启动参数 \\
+			\midrule
+			0 & \texttt{createMarker -s 14 0} & \texttt{\_target\_id:=0} 或 \texttt{marker\_id:=0} \\
+			1 & \texttt{createMarker -s 14 1} & \texttt{\_target\_id:=1} 或 \texttt{marker\_id:=1} \\
+			2 & \texttt{createMarker -s 14 2} & \texttt{\_target\_id:=2} 或 \texttt{marker\_id:=2} \\
+			\bottomrule
+		\end{tabular}
+	\end{table}
+	实测时应优先在 launch 文件中写入参数，便于重复运行；临时调参时可使用命令行传参。
+
+	\subsection{实时跟随行为}
+	当后车距离前车大于设定距离时，距离误差 \(e_d>0\)，线速度为正，后车前进；当进入期望间距附近时，线速度逐渐减小并趋近于零。当前车位于画面一侧时，角速度使后车转向目标方向。若前车转弯过快或标签离开视野，\texttt{motion\_allowed} 失效，门控输出零速度，后车原地等待重新识别。
+
+	\subsection{多机队列扩展}
+	若需要多台 Turtlebot2 队列跟随，可在每台前车尾部粘贴不同编号的 AR 标记。例如 TonyPi 贴 0 号，第一台 Turtlebot 跟随 0 号；第一台 Turtlebot 尾部贴 1 号，第二台跟随 1 号。对应配置如表~\ref{tab:multi} 所示。
+
+	\begin{table}[H]
+		\centering
+		\caption{多机队列跟随参数示例}
+		\label{tab:multi}
+		\begin{tabular}{llll}
+			\toprule
+			后车 & 直接前车 & 前车标记 ID & 后车参数 \\
+			\midrule
+			Turtlebot2-1 & TonyPi & 0 & \texttt{marker\_id:=0} \\
+			Turtlebot2-2 & Turtlebot2-1 & 1 & \texttt{marker\_id:=1} \\
+			Turtlebot2-3 & Turtlebot2-2 & 2 & \texttt{marker\_id:=2} \\
+			Turtlebot2-4 & Turtlebot2-3 & 3 & \texttt{marker\_id:=3} \\
+			\bottomrule
+		\end{tabular}
+	\end{table}
+	多机运行时还需要确保各车使用不同命名空间，如 \texttt{/tb1}、\texttt{/tb2}，并使用唯一 TF 坐标系，如 \texttt{tb1/base\_footprint}、\texttt{tb2/base\_footprint}。
+
+	\section{实验结果分析}
+	\begin{itemize}
+		\item AR 标记实时跟随不依赖预先布置固定航路点，也不要求知道前车在地图中的绝对坐标。只要前车标记在相机视野内，后车即可根据相对位姿闭环控制，因此适合前车轨迹不固定的任务。
+		\item \texttt{target\_id} 或 \texttt{marker\_id} 是目标选择的核心参数。标签 ID 与程序参数不一致时，识别节点可能已经检测到标记，但控制节点仍会认为目标丢失。
+		\item 标记尺寸参数会直接影响位姿估计比例。若实际打印边长为 \SI{14}{cm}，但启动时设置为 \SI{9}{cm}，距离估计会出现系统性误差，进而导致跟随距离不准确。
+		\item 使用 TF 将 AR 位姿变换到 \texttt{base\_footprint} 后再控制，比直接使用相机坐标更适合工程部署。这样可以减少相机安装角度、高度和坐标系方向差异带来的影响。
+		\item 速度门控是实机实验中的必要环节。跟随控制器只负责生成期望速度，门控节点负责检查任务状态、急停、扫描和速度新鲜度，可以避免目标丢失后继续沿旧速度运动。
+		\item 参数整定应从低速开始。若左右摆动明显，应减小 \(k_\omega\)；若前后距离震荡，应减小 \(k_v\) 或增大期望距离；若跟随过慢，可在保证安全的前提下适当增大最大线速度。
+	\end{itemize}
+
+	\section{问题与改进}
+	\begin{enumerate}
+		\item \textbf{目标遮挡问题：} 前车转弯或距离过近时，AR 标记可能离开视野。可通过增大标记尺寸、提高安装高度、减小前车速度和增大期望跟随距离改善。
+		\item \textbf{光照与反光问题：} AR 标签受光照影响较明显。应避免覆膜反光，必要时在现场重新打印更大标签。
+		\item \textbf{多机话题冲突：} 多台 Turtlebot 同时运行时，不能只添加 launch 命名空间，还需要确保底盘、相机、扫描和 TF frame ID 都唯一。
+		\item \textbf{避障能力限制：} 直接 AR 跟随只能停车避障，不能自动规划绕过障碍；若需要绕障，应结合仓库中的 \texttt{follow\_map.launch}、AMCL 和 \texttt{move\_base}。
+		\item \textbf{TonyPi 运动稳定性：} 若前车为双足 TonyPi，身体起伏会导致标记抖动。标签应贴在较稳定的背部平面，并降低后车控制增益。
+	\end{enumerate}
+
+	\section{实验心得}
+	通过本实验，我理解了视觉测量、ROS 话题、TF 坐标变换和移动机器人闭环控制之间的完整链路。与固定二维码航路点方案相比，背贴 AR 标记实时跟随更灵活，前车走到哪里，后车就可以基于相对位姿跟到哪里；但它对视野、光照、标签朝向和前车速度更敏感。
+
+	本实验还说明，实机系统不能只关注控制公式本身。目标选择参数、消息时间戳、速度门控、急停和扫描安全距离都会直接影响机器人是否安全可靠。尤其在多机系统中，命名空间、TF frame ID 和速度发布者唯一性非常重要。后续如果继续改进，可以在 AR 直接跟随的基础上加入地图规划或 RGB-D 目标重识别，使系统在短暂遮挡和复杂障碍环境下更加稳定。
+
+\end{document}
