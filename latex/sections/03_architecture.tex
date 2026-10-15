@@ -1,0 +1,27 @@
+\section{系统架构与协同接口}
+\subsection{分层控制}
+人形机器人负责物体搬运与领行；TurtleBot负责各自的目标观测、定位和运动控制。不同机器人的执行器由各自进程独占，感知线程只提供观测，避免多个程序同时写舵机或底盘速度。图\ref{fig:architecture}描述方式二的完整数据链；任务心跳是可选适配接口，不代表所有人形入口已经发送心跳。
+\begin{figure}[htbp]\centering
+\input{figures/system_architecture.tex}
+\caption{人形机器人与方式二跟随的数据链}\label{fig:architecture}
+\end{figure}
+
+\subsection{软件平台与版本边界}
+TonyPi 使用 Python 3、OpenCV、NumPy、PyYAML及设备原装舵机SDK；不同树莓派镜像的串口、SDK和相机接口存在差异，应使用实际部署配置。TurtleBot课程虚拟机为 Ubuntu 16.04、ROS Kinetic、Python 2.7，功能包放置于 \code{~/catkin_ws/src}，不能直接用 Python 3 替换 ROS 节点解释器。
+
+\begin{table}[htbp]\centering\small
+\caption{关键接口及约束}
+\begin{tabularx}{\linewidth}{p{37mm}p{40mm}Y}\toprule
+接口 & 内容 & 使用约束\\\midrule
+\code{/ar_pose_marker} & 带ID与时间戳的标记位姿 & ALVAR标记；尺寸、相机内参和坐标系须一致\\
+\code{target_pose} & 目标在地图中的位姿 & 按观测时刻变换，保留原时间戳\\
+\code{/scan} & 障碍扫描 & 实际可能来自Kinect深度转扫描；检查高度覆盖与时效\\
+\code{map -> odom} & 全局定位变换 & 建图用GMapping；固定地图定位用AMCL，不能同时发布\\
+\code{/competition/mission} & 搬运任务状态 & 需持续更新；开环和最新标记入口不能默认视为已接入\\
+\code{/cmd_vel_mux/input/navi} & 方式二底盘导航速度 & 由独立门控输出；不与键盘遥控争用\\\bottomrule
+\end{tabularx}\end{table}
+
+\subsection{拓扑与跟随方式的区分}
+“TonyPi到首车再到后车”的队列拓扑，与“标记/地图/RGB-D/前车轨迹”的跟随算法是两个维度。当前方式二默认直接观察 TonyPi 背部 AR 标记，再在地图中导航；也支持输入前车地图位姿。实验时应固定一个目标来源并记录，不能把两个适配器同时发布到同一个目标话题。
+
+多机应使用唯一节点名、命名空间与TF名称，并确保时间与地图原点一致。虚拟机 NAT 地址可供宿主机 SSH 访问，不保证机器人能反向访问 ROS；联调需验证共同局域网、\code{ROS_MASTER_URI}与\code{ROS_IP}，报告不收录密码等登录凭据。

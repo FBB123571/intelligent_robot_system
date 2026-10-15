@@ -1,0 +1,33 @@
+\usepackage[margin=25mm,headheight=16pt]{geometry}
+\usepackage{amsmath,amssymb,booktabs,longtable,tabularx,array,graphicx}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,calc}
+\usepackage{listings,caption,subcaption,fancyhdr}
+\usepackage[hidelinks,unicode]{hyperref}
+\usepackage{xurl}
+\urlstyle{tt}
+\setlength{\emergencystretch}{3em}
+\setlength{\parskip}{.3em}
+\renewcommand{\arraystretch}{1.28}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\pagestyle{fancy}\fancyhf{}
+\fancyhead[L]{\small 多机协同控制实验报告}
+\fancyhead[R]{\small 协作初稿}
+\fancyfoot[C]{\thepage}
+\captionsetup{font=small,labelfont=bf}
+\lstset{basicstyle=\ttfamily\small,breaklines=true,columns=fullflexible,
+ keepspaces=true,frame=single,rulecolor=\color{black!20},showstringspaces=false,
+ backgroundcolor=\color{black!2},aboveskip=8pt,belowskip=8pt}
+\newcommand{\code}[1]{\nolinkurl{#1}}
+\newcommand{\pending}[1]{\textcolor{BrickRed}{\textbf{待补充：}#1}}
+% 图片可晚于正文提交；缺图时明确标为占位，不伪装成现场证据。
+\newcommand{\reportphoto}[3]{%
+ \begin{figure}[htbp]\centering
+ \IfFileExists{#1}{\includegraphics[width=.8\linewidth,height=.30\textheight,keepaspectratio]{#1}}%
+ {\fbox{\parbox[c][32mm][c]{.82\linewidth}{\centering\small 现场图片待归档\\\code{#1}\\#3}}}
+ \IfFileExists{#1}{\caption{#2}}{\caption{#2（原始图片待归档）}}\end{figure}}
+\tikzset{block/.style={draw=black!60,rounded corners=2pt,fill=blue!4,
+ align=center,font=\small,minimum height=10mm,text width=32mm},
+ flow/.style={-{Stealth[length=2mm]},thick},
+ note/.style={font=\small,align=center}}

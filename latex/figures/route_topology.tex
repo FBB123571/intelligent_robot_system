@@ -1,0 +1,9 @@
+\begin{tikzpicture}[x=1cm,y=1cm]
+\draw[line width=10mm,gray!15] (0,0)--(4,0)--(4,2)--(8,2);
+\draw[flow,blue!70!black] (0,0)--(4,0)--(4,2)--(8,2);
+\foreach \p/\t in {(0,0)/起点,(4,0)/A：左转,(4,2)/B：右转,(8,2)/C：停止放置}
+ {\fill \p circle(2pt);\node[above=5mm,font=\small] at \p {\t};}
+\node[below,font=\small] at (2,0) {第一段直行};
+\node[right,font=\small] at (4,1) {第二段};
+\node[below,font=\small] at (6,2) {第三段直行};
+\end{tikzpicture}
