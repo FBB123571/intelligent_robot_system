@@ -3,6 +3,7 @@ RUN apt-get -o Acquire::http::Timeout=20 -o Acquire::Retries=3 update && \
     apt-get -o Acquire::http::Timeout=20 -o Acquire::Retries=3 install -y --no-install-recommends \
     ros-kinetic-cv-bridge ros-kinetic-tf2-ros ros-kinetic-move-base \
     ros-kinetic-navfn ros-kinetic-dwa-local-planner ros-kinetic-rostest \
+    ros-kinetic-ar-track-alvar ros-kinetic-ar-track-alvar-msgs \
     python-opencv python-numpy python-yaml && rm -rf /var/lib/apt/lists/*
 COPY turtlebot/follow1/ar_marker_following /ws/src/ar_marker_following
 COPY turtlebot/follow2/multi_robot_following/src/competition_core /ws/src/ar_marker_following/src/competition_core
