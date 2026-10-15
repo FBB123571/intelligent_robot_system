@@ -61,15 +61,16 @@ class RosGuardTests(unittest.TestCase):
         self.addCleanup(self.patcher.stop)
         root = Path(__file__).resolve().parents[1]
         sys.path.insert(0, str(root / 'turtlebot/follow2/multi_robot_following/src'))
-        scripts = root / 'turtlebot/follow2/multi_robot_following/scripts'
-        def load(name):
-            spec = importlib.util.spec_from_file_location('test_' + name, scripts / (name + '.py'))
+        follow2_scripts = root / 'turtlebot/follow2/multi_robot_following/scripts'
+        follow1_scripts = root / 'turtlebot/follow1/ar_marker_following/scripts'
+        def load(name, scripts_dir):
+            spec = importlib.util.spec_from_file_location('test_' + name, scripts_dir / (name + '.py'))
             out = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(out)
             return out
-        self.gate_module = load('velocity_gate')
-        self.follow_module = load('map_follower')
-        self.marker_module = load('marker_target')
+        self.gate_module = load('velocity_gate', follow1_scripts)
+        self.follow_module = load('map_follower', follow2_scripts)
+        self.marker_module = load('marker_target', follow2_scripts)
 
     def gate(self):
         gate = self.gate_module.Gate.__new__(self.gate_module.Gate)
