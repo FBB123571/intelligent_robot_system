@@ -6,7 +6,7 @@ RUN apt-get -o Acquire::http::Timeout=20 -o Acquire::Retries=3 update && \
     ros-kinetic-rostest ros-kinetic-ar-track-alvar ros-kinetic-ar-track-alvar-msgs \
     python-opencv python-numpy python-yaml && rm -rf /var/lib/apt/lists/*
 COPY turtlebot/follow1/ar_marker_following /ws/src/ar_marker_following
-COPY turtlebot/follow2/multi_robot_following/src/competition_core /ws/src/ar_marker_following/src/competition_core
+COPY turtlebot/follow2/competition_core /ws/src/competition_core
 RUN find /ws/src/ar_marker_following -name '*.py' -exec sed -i 's/\r$//' {} + && \
     chmod +x /ws/src/ar_marker_following/scripts/*.py && \
     [ -d /ws/src/ar_marker_following/test ] && chmod +x /ws/src/ar_marker_following/test/*.py || true
