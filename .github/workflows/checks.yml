@@ -6,7 +6,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build actual Kinetic package with archived distribution dependencies
-        run: docker build -f tools/ros-kinetic.Dockerfile -t rgbd-kinetic-check turtlebot/follow1/ar_marker_following
+        run: docker build -f tools/ros-kinetic.Dockerfile -t rgbd-kinetic-check .
       - name: Exercise actual ROS transport, navigation, shadow output and loss stop
         run: docker run --rm -v "$PWD/.ros-test-results:/ws/build/test_results" rgbd-kinetic-check
       - uses: actions/upload-artifact@v4
