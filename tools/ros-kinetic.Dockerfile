@@ -6,7 +6,8 @@ RUN apt-get -o Acquire::http::Timeout=20 -o Acquire::Retries=3 update && \
     python-opencv python-numpy python-yaml && rm -rf /var/lib/apt/lists/*
 COPY . /ws/src/rgbd_following
 RUN find /ws/src/rgbd_following -name '*.py' -exec sed -i 's/\r$//' {} + && \
-    chmod +x /ws/src/rgbd_following/scripts/*.py /ws/src/rgbd_following/test/*.py
+    chmod +x /ws/src/rgbd_following/scripts/*.py && \
+    [ -d /ws/src/rgbd_following/test ] && chmod +x /ws/src/rgbd_following/test/*.py || true
 WORKDIR /ws
 RUN /bin/bash -c 'source /opt/ros/kinetic/setup.bash && catkin_make'
 CMD ["/bin/bash", "-c", "source devel/setup.bash && catkin_make run_tests && catkin_test_results --verbose"]
