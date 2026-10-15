@@ -10,6 +10,8 @@ TonyPi 识别并抱起物体，沿标定路线抱物行走、左转和右转，�
 
 ## 先看哪些文件
 
+报告协作入口：[LaTeX 报告目录](latex/README.md)。第一组的人形机器人与方式二章节已起草，其他组有独立章节与成员分工表；[PDF 初稿](latex/report-draft.pdf) 供直接查看，尚待补齐成员和完整实测结果。
+
 | 内容 | 位置 |
 |---|---|
 | 比赛要求原文 | [第五六章实验要求](第五-六章-基于视觉与AI定位的多机协同控制实验.docx) |
@@ -206,7 +208,7 @@ rosrun tf tf_echo map tb2/base_footprint
 
 ## 四种方式入口
 
-- [follow1](turtlebot/follow1/README.md)：提供背贴 AR 的直接跟随参考入口，障碍靠近时停车。
+- [follow1](turtlebot/follow1/README.md)：提供背贴 AR 的直接跟随实验入口，障碍靠近时停止前进并尝试左转。
 - [follow3](turtlebot/follow3/README.md)：本组负责的 RGB-D 实时跟随，含诊断、目标关联、滚动地图导航与门控；待 ROS 和实机联调。
 - [follow4](turtlebot/follow4/README.md)：前车地图位姿/轨迹串行跟随，复用本包的目标和导航接口。
 
