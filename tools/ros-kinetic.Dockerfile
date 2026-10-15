@@ -4,10 +4,11 @@ RUN apt-get -o Acquire::http::Timeout=20 -o Acquire::Retries=3 update && \
     ros-kinetic-cv-bridge ros-kinetic-tf2-ros ros-kinetic-move-base \
     ros-kinetic-navfn ros-kinetic-dwa-local-planner ros-kinetic-rostest \
     python-opencv python-numpy python-yaml && rm -rf /var/lib/apt/lists/*
-COPY . /ws/src/rgbd_following
-RUN find /ws/src/rgbd_following -name '*.py' -exec sed -i 's/\r$//' {} + && \
-    chmod +x /ws/src/rgbd_following/scripts/*.py && \
-    [ -d /ws/src/rgbd_following/test ] && chmod +x /ws/src/rgbd_following/test/*.py || true
+COPY turtlebot/follow1/ar_marker_following /ws/src/ar_marker_following
+COPY turtlebot/follow2/multi_robot_following/src/competition_core /ws/src/ar_marker_following/src/competition_core
+RUN find /ws/src/ar_marker_following -name '*.py' -exec sed -i 's/\r$//' {} + && \
+    chmod +x /ws/src/ar_marker_following/scripts/*.py && \
+    [ -d /ws/src/ar_marker_following/test ] && chmod +x /ws/src/ar_marker_following/test/*.py || true
 WORKDIR /ws
 RUN /bin/bash -c 'source /opt/ros/kinetic/setup.bash && catkin_make'
 CMD ["/bin/bash", "-c", "source devel/setup.bash && catkin_make run_tests && catkin_test_results --verbose"]
