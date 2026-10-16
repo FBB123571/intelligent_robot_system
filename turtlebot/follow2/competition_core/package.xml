@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>competition_core</name>
+  <version>0.1.0</version>
+  <description>Core planning and mission logic for the TonyPi robot competition.</description>
+  <maintainer email="50793097+yky666@users.noreply.github.com">yky666</maintainer>
+  <license>BSD-3-Clause</license>
+  <buildtool_depend>catkin</buildtool_depend>
+</package>
