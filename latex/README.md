@@ -2,7 +2,11 @@
 
 使用 **XeLaTeX**，入口是 `main.tex`。第一组负责 **TonyPi 人形机器人 + 方式二建图避障跟随**；姓名、学号、实际贡献先占位。第二/三/四组与方式一/三/四的对应关系暂供协作，需各组确认。
 
-本初稿按代码基线 `6b6db8c` 核对，已包含最新 `humanoid/maze_route`，不把旧道路居中入口当作唯一最终实现。完整实机结果尚未收齐，文中明确区分实现、合成测试、局部实机和全队验收。
+本轮按代码基线 `43a7771` 核对（2026-10-19），保留 `humanoid/maze_route` 正文，并整合新提交的方式一报告。完整实机结果尚未收齐，文中明确区分实现、合成测试、局部实机和全队验收。
+
+方式一投稿 `follow1/ar_marker_report.tex` 是独立文档，保留原样；其内容经源码核对后归入 `sections/20_follow1.tex`。总报告区分旧 `ar_follower` 和新 `ar_marker_following`，同步更新方式二对 AR 包、共享门控和 `competition_core` 的依赖。不要把含 `\documentclass` 的独立投稿直接 `\input` 到主文档。
+
+本轮还记录了新包 `follow_marker.launch` 残留旧 node 包名、独立共享核心安装目录与声明不一致，以及 CI 实际范围的限制；仅整合文稿，未顺带改动控制代码。更新范围见 `INTEGRATION_20261019.md`。
 
 ## 各组改哪些文件
 

@@ -2,7 +2,14 @@
 \subsection{方案与功能包组织}
 方式二将“看见目标”与“安全到达跟随位置”分开：相机观测TonyPi背部AR标记，在地图中恢复其位置并积累历史轨迹；随后由导航栈在已知地图和实时障碍约束下生成底盘速度。目标朝向不直接作为跟随方向，避免背贴标签朝向与实际行进方向不一致时生成错误目标。
 
-独立ROS功能包\code{multi_robot_following}位于\code{turtlebot/follow2/}，部署到虚拟机\code{~/catkin_ws/src}。包内包括建图入口、AMCL/move\_base配置、目标源适配、轨迹跟随、速度门控与任务心跳桥，不覆盖原有课程包。
+独立ROS功能包\code{multi_robot_following}位于\code{turtlebot/follow2/}，部署到虚拟机\code{~/catkin_ws/src}。包内包括建图入口、AMCL/move\_base配置、目标源适配、轨迹跟随与任务心跳桥。最新拆分将速度门控和AR识别launch移入\code{turtlebot/follow1/ar_marker_following}，并新增\code{turtlebot/follow2/competition_core}共享包。因此方式二不再是仅复制一个目录就能完整启动的自包含包。
+
+\subsection{本次包拆分与接口核对}
+当前\code{follow_map.launch}从\code{ar_marker_following}启动速度门控，\code{vm_follow2.launch}也从该包包含\code{ar_tracker.launch}。需将\code{multi_robot_following}、\code{ar_marker_following}及\code{competition_core}共同放入catkin工作空间，并重新构建和source；不得沿用拆分前单包构建成功的记录作为新结构已验证的证据。
+
+共享核心在历史\code{multi_robot_following/src/competition_core}中仍有副本；新独立包的\code{setup.py}声明安装\code{competition_core}，但文件当前直接位于\code{src/}，未位于其声明通常对应的\code{src/competition_core/}。本次静态检查记录这一目录与安装声明不一致的问题，未在实际catkin环境重建，不能认定独立包已经正确安装。旧源码路径上的单元测试能够通过，也不能排除该安装问题。
+
+此外，当前Docker构建上下文只复制方式一与独立核心包，没有复制方式二/三；方式一包没有相应rostest目录。因此CI名称中的“navigation/shadow/loss stop”不能当作这些全部系统已获ROS集成验收的证据。新增依赖、构建步骤和测试范围应分别登记。
 
 \subsection{沿用课程建图链与地图质量检查}
 底盘启动与键盘遥控已由小组确认可用：\code{turtlebot_bringup minimal.launch}及\code{turtlebot_teleop keyboard_teleop.launch}。建图优先沿用课程\code{turtlebot_navigation gmapping_demo.launch}，另用课程导航RViz配置查看地图、扫描和TF。该入口已集成部分相机和导航节点，不与新包的建图入口重复启动。
