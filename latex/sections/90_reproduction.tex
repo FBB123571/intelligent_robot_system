@@ -7,8 +7,9 @@
 动作副本 & \code{humanoid/maze_route/actions/}；生成规则见同目录\code{mkcopies.py}\\
 通用反馈与道路 & \code{humanoid/scripts/competition.py}，\code{lane_control.py}，\code{lane_trial.py}\\
 方式二入口 & \code{turtlebot/follow2/multi_robot_following/launch/vm_follow2.launch}\\
-目标与导航控制 & 该包\code{scripts/marker_target.py}、\code{map_follower.py}、\code{velocity_gate.py}\\
-轨迹与几何核心 & 该包\code{src/competition_core/planning.py}\\
+目标与导航控制 & 该包\code{scripts/marker_target.py}与\code{map_follower.py}\\
+AR控制与共享门控 & \code{turtlebot/follow1/ar_marker_following/scripts/marker_follower.py}与\code{velocity_gate.py}\\
+轨迹与几何核心 & 新独立包\code{turtlebot/follow2/competition_core/src/planning.py}；旧包仍保留\code{src/competition_core/planning.py}，安装布局待核对\\
 导航默认参数 & 该包\code{config/move_base.yaml}及\code{costmap_common.yaml}\\\bottomrule
 \end{longtable}
 
@@ -21,7 +22,7 @@ python3 humanoid/maze_route/marker_route.py --no-servos
 \code{--no-servos}不访问舵机串口并隐含dry-run；单独\code{--dry-run}仍可能设置头部，二者不能混淆。真实运动入口会关闭厂家上位机并停止相关服务，运行前核对同目录README与设备配置；本报告构建不会运行机器人控制脚本。
 
 \subsection{方式二现场启动索引}
-底盘、相机、扫描与地图请按\code{docs/turtlebot_debug_commands.md}逐终端启动，避免重复驱动。完成地图及AMCL初始位姿后，主要跟随入口为：
+底盘、相机、扫描与地图请按\code{docs/turtlebot_debug_commands.md}逐终端启动，避免重复驱动。最新结构还需同时部署方式一共享包和独立核心包，并解决正文记录的安装问题。完成迁移后构建、地图及AMCL初始位姿检查，主要跟随入口为：
 \begin{lstlisting}[language=bash]
 source /opt/ros/kinetic/setup.bash
 source ~/catkin_ws/devel/setup.bash
@@ -30,6 +31,8 @@ roslaunch multi_robot_following vm_follow2.launch \
   marker_id:=1 marker_size_cm:=9.0
 \end{lstlisting}
 标记尺寸9.0\,cm是该launch默认值，必须按实际ALVAR黑边尺寸替换；与人形航路14\,cm自定义标记无关。正式跟随还需要持续任务状态和各项许可，单独启动此命令不会自动形成全队协同。
+
+上述是入口索引，不是最新拆包后的实机成功记录；本次未在ROS Kinetic设备重新部署或运行这些命令。
 
 \subsection{报告提交前核对}
 \begin{enumerate}

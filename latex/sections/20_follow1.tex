@@ -1,13 +1,68 @@
-\section{方式一AR直接跟随}
-\subsection{已有实现摘要与方式认定}
-仓库已合并从虚拟机提取的\code{ar_follower}包及独立实验说明\cite{follow1}。该实现通过Kinect检测前方机器人背部ALVAR标记，取标记光学坐标中的前向距离$z$和横向偏差$x$，以比例控制输出速度：
+\section{第二组（暂定）：方式一AR直接跟随}
+\subsection{材料来源、实验目标与版本区分}
+本章整合新提交的独立报告\code{latex/follow1/ar_marker_report.tex}、方式一实验总结与实际源码\cite{follow1}，保留原作者文档供各组继续修订。目标是使后车通过Kinect观测前车背部ALVAR标记，在不依赖预建地图的条件下保持距离、调整朝向，并在必要输入失效时限制运动。
+
+本仓库同时存在两套直接跟随实现，参数、坐标和保护措施不能混用。早期\code{ar_follower/follow_ar.py}为从虚拟机提取的实验节点；最新\code{ar_marker_following}为拆分后的TF变换与独立速度门控版本。新增报告同时介绍两者，本章按实际代码分别说明，避免把新版保护能力写成旧节点的实测结果。
+\begin{table}[htbp]\centering\small
+\caption{两套AR直接跟随实现的边界}
+\begin{tabularx}{\linewidth}{p{31mm}YY}\toprule
+项目 & 早期实验节点 & 拆分后的门控版本\\\midrule
+功能包 & \code{ar_follower} & \code{ar_marker_following}\\
+目标参数 & \code{target_id}，默认1 & \code{marker_id}，默认1\\
+跟随距离 & 默认0.4\,m & 默认1.0\,m\\
+位置坐标 & 光学坐标$z$前向、$x$横向 & TF到车体坐标$x$前向、$y$左向\\
+速度限制 & 线速度0.3\,m/s、角速度1.0\,rad/s & 控制器前进上限0.12\,m/s、角速度0.45\,rad/s\\
+输出 & 直接发\code{teleop}输入 & 原始速度经门控再发导航输入\\
+失效处置 & 空检测停车；无完整时效检查 & 目标/任务时效、许可、扫描和急停检查\\
+障碍处置 & 前方过近停前进并左转 & 门控拒绝不安全速度，不规划绕障\\\bottomrule
+\end{tabularx}\end{table}
+
+课程参考方式一强调固定场地标签航路点；这里实现的是移动目标背贴AR直接跟随。需由对应组和教师确认方式认定，以及与方式二、三、四的独立性；“换标签编号形成队列”只是拓扑扩展，不自动构成新算法。
+
+\subsection{标记识别、尺寸与目标ID}
+\code{ar_track_alvar}接收RGB图像与CameraInfo，输出\code{AlvarMarkers}。跟随节点只选取参数指定ID，识别节点能看见其他ID也不代表控制节点会跟随。改变目标时，旧节点使用\code{_target_id:=1}，新版launch使用\code{marker_id:=1}，应核对实际入口后设置。
+
+标签应为ALVAR格式，实际黑边尺寸须与\code{marker_size_cm}一致。旧实验launch默认14\,cm，新包识别launch默认9\,cm，均不是现场尺寸已确定的结论。尺寸不一致会引入尺度误差；标记反光、视野边缘、遮挡、打印缩放和相机内参错误也会影响距离估计。多车应为直接前车分配明确标记ID，并分别登记图像、内参话题与光学坐标系。
+
+\subsection{相机直接控制与车体坐标控制}
+早期节点直接使用相机光学坐标$z_m,x_m$，控制思想为
 \begin{equation}
-v=\operatorname{sat}\!\left(K_v(z-d_0)\right),\qquad
-\omega=\operatorname{sat}\!\left(-K_\omega x\right).
+v=\operatorname{sat}\!\left(K_v(z_m-d_0)\right),\qquad
+\omega=\operatorname{sat}\!\left(-K_\omega x_m\right).
 \end{equation}
-实际符号以节点坐标约定为准。默认目标ID为1、跟随距离0.4\,m、最大线速度0.3\,m/s、最大角速度1.0\,rad/s。前方60度扇区障碍小于0.25\,m时停止前进并慢速左转。该节点直接输出到\code{/cmd_vel_mux/input/teleop}，不经过方式二的速度门控。
+光学坐标中横向向右为正，ROS角速度向左为正，故转向项取负号。实机需核对坐标约定与安装方向，不能在TF或相机配置错误时仅用反号掩盖问题。旧节点扫描前方60度扇区，小于0.25\,m时线速度归零、角速度设为0.5\,rad/s；目标太近时也停止前进，但扫描失联没有独立超时保护。
 
-课程参考的方式一强调固定场地标签航路点，而该组已提交程序属于移动目标背贴AR直接跟随，两者存在差别。应由对应组明确最终参赛定义、与方式二/三的独立性及教师确认情况，不在本初稿中强行等同。
+新\code{marker_follower.py}将量测在原始时间戳变换到\code{base_frame}，保留有限且位于前方的目标$(x,y)$。用$\alpha=\operatorname{atan2}(y,x)$计算方位，源码控制律为
+\begin{align}
+v&=\begin{cases}\min\{0.12,\,0.4(x-d_0)\},&x>d_0\land|\alpha|<0.4,\\0,&\text{其他情况},\end{cases}\\
+\omega&=\begin{cases}\operatorname{clamp}(1.2\alpha,0.45),&x>0.65,\\0,&\text{其他情况}.\end{cases}
+\end{align}
+距离以米、角度以弧度计。新版观测输入须在0.5\,s内，控制阶段允许的最近目标年龄为0.6\,s，任务状态年龄为1.5\,s；只有carrying、releasing、done且未急停时发布有效许可。新版本不能依赖旧版“直接取相机$z$”来解释车体$x$的数值。
 
+\subsection{独立速度门控与停止条件}
+新版原始速度发布到\code{cmd_vel_raw}，许可发布到\code{motion_allowed}，再由\code{velocity_gate.py}检查并输出\code{cmd_vel_safe}。任务状态由上游控制器转换为许可，门控本身不直接订阅任务字符串。许可或速度超过0.4\,s未更新、扫描超过0.5\,s未刷新、急停有效、速度非有限或为倒车时输出零速度。
 
-现有节点缺少扫描与目标消息超时看门狗，因此收到空检测消息时停车，不能等同于所有通信中断时都能停车。该实现边界应与方式二的独立门控区分。
+默认门控最大线速度0.15\,m/s、最大角速度0.5\,rad/s，前方停止距离0.5\,m；直接跟随控制器自身限制更低，不能用门控上限替代实际输出上限。直行扫描半扇区为45度，转动时扩大到90度，至少需要足够有效量测；NaN/Inf缺测不能当作安全。壁钟线程用于处理ROS时钟暂停。目标丢失仍可能在目标时效窗口内沿用最近有效观测，不能写成瞬时硬件急停。
+
+\subsection{调试流程与迁移后的启动边界}
+先确认底盘、相机、实际图像话题和标签ID，再检查TF与\code{/scan}；只运行识别节点时不应期待底盘运动。任务状态、许可或扫描任一条件未满足，门控保持停止是预期行为。多车必须统一\code{robot_ns}，识别launch默认\code{tb2}、跟随launch默认\code{tb1}，不能同时依赖两套默认命名空间。
+
+新增报告给出的主入口为\code{roslaunch ar_marker_following follow_marker.launch}，但在本次基线\code{43a7771}中，该launch内部两个node仍写\code{pkg="multi_robot_following"}，而脚本已经迁至\code{ar_marker_following}。这属于尚未完成的迁移，\textbf{不能将报告中的启动命令标为已直接验证可用}。当前工作仅整合报告，未改动这些控制文件；运行前需修正并在目标ROS环境重新构建、解析及启动验证。
+
+\subsection{队列扩展与方式独立性}
+可令TonyPi贴ID0、首车跟随ID0，首车贴ID1、次车跟随ID1。每台车拥有唯一命名空间和TF，但改变ID只改变目标，不改变直接跟随的控制律。该方案不提供地图路径规划，遇障会停车而非主动绕行；需要绕障时，应接入方式二导航或由对应组明确其他规划实现。
+
+\subsection{现象记录、证据范围与待补实验}
+新提交报告描述标签移动引起相对坐标变化、距离大时前进、接近期望值时减速、目标偏侧时转向等现象，可作为对应组的定性材料。\textbf{尚未附原始bag、完整试验日志、样本数和统计误差}，且文稿同时涉及旧/新控制器，因此这些现象不能直接认定为新版门控链的实机验收。目标ID0/1/2与多车配置表属于设置方法和示例，不等于已完成多ID或多车实验。
+
+本次对迁移后的ROS适配器进行11项消息替身测试，均通过；这只验证部分控制与停止分支，不包含真实ROS通信、TF树、扫描驱动、catkin安装或底盘运动。正式实验应逐项登记实际入口、ID、尺寸、距离误差、转角丢失时长、扫描/任务中断停车延迟以及完整跟随成功率。
+
+\subsection{组内分工与后续补充}
+\pending{确认实际组号与成员，补齐真实尺寸和配置、原始实验数据、迁移后运行记录及完整跟随结果。}
+\begin{table}[htbp]\centering\small
+\begin{tabularx}{\linewidth}{p{28mm}YY}\toprule
+姓名/学号 & 具体任务 & 交付证据/合作说明\\\midrule
+待填写 & 标记、相机与TF标定 & 待填写\\
+待填写 & 控制、门控与包迁移验证 & 待填写\\
+待填写 & 实机试验、数据整理与报告 & 待填写\\\bottomrule
+\end{tabularx}\caption{第二组（暂定）内部职责}\end{table}
